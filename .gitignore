@@ -1,0 +1,12 @@
+*
+!.gitignore
+!bexpr.c
+!bexpr.h
+!memory_tests.c
+!expression_tests.py
+!tests.py
+!memory_tests.c
+!README.md
+!debug_utils.c
+!bexpr_cli.c
+!tests.txt
