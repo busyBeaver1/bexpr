@@ -170,7 +170,7 @@ char _be_strerr[_BE_STRERR_LEN * _BE_STRERR_MESSAGES];
 int _be_strerr_k = 0;
 
 // same thing as `be_strerr` but writing to a provided destination `dst` rather than preallocated memory. thread-safe unlike `be_strerr`.
-// `dst` should point to preallocated memory of at least 193 bytes (192 chartacters is the most possible with 64-bit `size_t` + 1 for null terminator)
+// `dst` should point to preallocated memory of at least 193 bytes (192 characters is the most possible with 64-bit `size_t` + 1 for null terminator)
 // though 256 (=`_BE_STRERR_LEN`) is recommended because I might forget to update this comment
 void be_strerr_to(char *dst, be_err_t *err) {
     const char *name;

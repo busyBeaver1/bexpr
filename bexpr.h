@@ -72,7 +72,7 @@ double be_code_eval(const be_code_t *code, const double *vars, unsigned long lon
 char *be_strerr(be_err_t *err);
 
 // same thing as `be_strerr` but writing to a provided destination `dst` rather than preallocated memory. thread-safe unlike `be_strerr`.
-// `dst` should point to preallocated memory of at least 197 bytes (196 chartacters is the most possible with 64-bit `size_t` + 1 for null terminator) though 256 (=`_BE_STRERR_LEN`) is recommended
+// `dst` should point to preallocated memory of at least 193 bytes (192 characters is the most possible with 64-bit `size_t` + 1 for null terminator) though 256 (=`_BE_STRERR_LEN`) is recommended
 void be_strerr_to(char *dst, be_err_t *err);
 
 #ifdef __cplusplus
