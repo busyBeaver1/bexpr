@@ -53,7 +53,7 @@ For further clarification reference comments
 
 When compiling you should link against standard `math.h` library, e.g.
 ```bash
-$ gcc -c -O3 -o bexpr.o bexpr.c
+$ gcc -lm -O3 -o example example.c
 ```
 
 There are 6 user-facing definitions: `_BE_USE_GCC_LABEL_POINTERS`, `_BE_OPTIMIZE_POW`, `_BE_INTPOW_LIMIT`, `_BE_UNLIMITED_CASE`, `_BE_STACK_LIMIT`, that can slightly alter bexpr's behavior (for explanation reference comments in `bexpr.c`).
@@ -253,7 +253,7 @@ Raw operations:
 
 Compilation:
 ```bash
-gcc -O3 -lm bexpr_cli.c -o bexpr
+$ gcc -O3 -lm bexpr_cli.c -o bexpr
 ```
 
 ---
