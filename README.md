@@ -2,6 +2,22 @@
 
 This is a relatively fast and light-weight math expression parser and evaluator written in C, with performance comparable and sometimes even better than that of a well-known library [exprtk](https://github.com/ArashPartow/exprtk) while being much more light-weight. Apart from parsing expressions a basic execution flow is supported, namely defining variables and conditional execution with `if`, `elif`, `else` and loops. It is not turing-complete though because arrays are not supported thus making for a hard limit on memory available at runtime. Custom functions are not supported for now.
 
+### Table of contents
+- [API overview](#API_overview)
+- [Syntax](#Syntax)
+- [Expression syntax](#Expression_syntax)
+    - [Pair architecture and ternary operator](#pairs)
+- [Examples](#Examples)
+- [CLI](#CLI)
+- [Performance](#Performance)
+    - [Compilation benchmark](#Compilation_benchmark)
+    - [Evaluation benchmark](#Evaluation_benchmark)
+    - [Busy loop benchmark](#Busy_loop_benchmark)
+    - [How to run benchmark](#How_to_run_benchmark)
+- [AI disclosure](#AI_disclosure)
+ANC
+
+<a name="API_overview"></a>
 ## API overview
 
 You only need the `bexpr.c` file or `bexpr.h` additionally if you want to use a header. You should either `#include "bexpr.h"` or `#include "bexpr.c"` directly but not both. The `.c` is self-sustained and `.h` is only provided for separate compilation and for including into C++. The basic workflow is as follows:
@@ -58,6 +74,7 @@ $ gcc -lm -O3 -o example example.c
 
 There are 6 user-facing definitions: `_BE_USE_GCC_LABEL_POINTERS`, `_BE_OPTIMIZE_POW`, `_BE_INTPOW_LIMIT`, `_BE_UNLIMITED_CASE`, `_BE_STACK_LIMIT`, that can slightly alter bexpr's behavior (for explanation reference comments in `bexpr.c`).
 
+<a name="Syntax"></a>
 ## Syntax
 
 A bexpr program (code) is a sequence of code lines that are executed sequentially. Lines can be of different types with the most important being expression lines. An expression is a mathematical formula made up of variables, constants, operators and functions. An expression evaluates to a numeric value at runtime. Here are examples of expressions: `1`, `1 ? 2 : 3`, `sin 3 + cos 4`, `x % 5 = 0 & x % 2 = 0`. An expression can take part in a line like in assignation `var := <expression>` or after `if` but can also serve as a line on its own. In the latter case when it is encountered the value it evaluates to becomes the return value of the whole program and the program halts. The program must either return a value or execute indefinitely (guaranteed at compile time)
@@ -78,7 +95,7 @@ Here are all types of lines supported:
 - `elif` scope. The syntax is `elif <expression> { <inner line 1>; <inner line 2>; ... }`. An `elif` line must only appear after an `if`, `elif` or `while` line (optionally with empty lines in between)
 - `else` scope. The syntax is `else { <inner line 1>; <inner line 2>; ... }`. An `else` line must only appear after an `if`, `elif` or `while` line (optionally with empty lines in between)
 - `break`. The syntax is `break<n>` (no whitespace) with `<n>` being a whole positive number, for example `break1`. `break<n>` exits exactly `n` enclosing scopes and jumps to the scope end
-- `loop`. The syntax is `loop<n>` (no whitespace) with `<n>` being a whole positive number, for example `loop1`. `break<n>` exits exactly `n` enclosing scopes and jumps to the scope beginning
+- `loop`. The syntax is `loop<n>` (no whitespace) with `<n>` being a whole positive number, for example `loop1`. `loop<n>` exits exactly `n` enclosing scopes and jumps to the scope beginning
 - Output. The syntax is either `@ <label> : <expression>` or `@ <label>`. `<label>` is any string not containing `;`, `{`, `}`, `:` or `#`, possibly empty. When such a line is encountered a user-defined function `print` (if it's defined) is called with the first argument being null-terminated label and the second being the value of the expression or NaN in case of the variant with no expression.
 
 A note on keyword vs variable name collision: Variable name can be `if`, `elif`, `else`, `@`, `break<n>` or `loop<n>`. `if`, `else` and `elif` keywords are detected when finding `}` at the end of the line so there is no conflict with variables. When encountering `@` at the start of a line or `break<n>` or `loop<n>` as the single token of a line it is parsed as usual and not as an expression containing a variable even if one with such name exists. To change that one can wrap it in parentheses.
@@ -115,6 +132,7 @@ An `if` scope having `loop1` as the last line behaves exactly like a `while` sco
 
 When checking that a program always returns a value all-branch checks for `if-elif-else` chains are performed, e.g. `if a {1} elif b {2} else {3}` is a valid program (if `a` and `b` are defined from outside) because a value is returned in each branch. The compiler also does constant folding but does not fold `if` and `elif` on constants. Thus it does not know that in `if 1 {2}` the condition is always satisfied, so this program will not compile. Presumably you don't call `if` on constants in normal usage anyways. If execution never reaches the end due to a proven infinite loop there may not be a returning expression, e.g. `loop1` and `{ if 1 {loop3} else {loop2} }` are valid programs both hanging indefinitely.
 
+<a name=Expression_syntax></a>
 ## Expression syntax
 
 All values in expressions are floating-point numbers, namely of type `double`. Logical values are represented by `0` for `false` and `1` for `true`. When checking a value as logical anything but `0` is treated as `true`.
@@ -149,6 +167,7 @@ Grouping parentheses `()` and `[]` are supported. Both have the same meaning but
 
 `+`, `-` and `*`, `/` are left-associative and operations at all other precedence levels are right-associative.
 
+<a name="pairs"></a>
 ### Pair architecture and ternary operator
 
 What I explain in this subsection is not necessary for the regular use. You can apply ternary operator and 2-argument functions as usual without thinking about this.
@@ -178,6 +197,7 @@ Here is the list of all functions supported:
 
 `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2` (function of 2 arguments), `floor`, `ceil`, `round`, `ln` (natural logarithm), `log` (also natural logarithm, just different alias), `exp`, `sqrt`, `cbrt` (cube root), `gamma` (gamma function, gamma(n) = (n-1)!), `sinh` (hyperbolic sin), `cosh`, `tanh`, `asinh` (inverse hyperbolic sin), `acosh`, `atanh`, `erf` (`erf(x) = 2/sqrt(pi) int_0^x e^(-t^2) dt`), `erfinv` (inverse function for `erf`, `erfinv(-1) = -inf`, `erfinv(1) = inf`, `erf(x) = nan` for `x` not in `[-1, 1]`), `sigmoid` (`sigmoid(x) = 1 / (1 + exp(-x))`), `max`, `min`, `sign` (returns `nan` on `nan`), `abs`.
 
+<a name="Examples"></a>
 ## Examples
 
 Calculating normal distribution density from `sigma`, `mu` and `x`:
@@ -218,6 +238,7 @@ while x < 1e100 {
 y / x
 ```
 
+<a name="CLI"></a>
 ## CLI
 
 The `bexpr_cli.c` file can be compiled into a simple cli tool that can be used to run and debug bexpr. It reads program from stdin until EOF and either runs it or outputs a bunch of internal info about compilation process. Examples:
@@ -259,6 +280,7 @@ $ gcc -O3 -lm bexpr_cli.c -o bexpr
 ---
 The example above also demonstrates const power optimization: instead of calling `POW(x, 1.5)` it does `temp := SQRT(x); temp * x` (pseudo-code). Such optimizations are performed for powers of: 0, 1/4, 1/3, 1/2, 2/3, 1.5 and negations of those and all integer powers that can be done in no more than 8 (`_BE_INTPOW_LIMIT`) multiplications. Note that the optimization may create a small difference from a direct `pow` call, e.g. `pow(0.33333, 3) = 0.03703592593703701` (in C) but in bexpr `0.33333^3 = 0.037035925937037` (optimized). For small powers optimized version is more accurate but for large powers it is less accurate than `pow`. The optimizations can be disabled by `#define _BE_OPTIMIZE_POW 0` before `bexpr.c` or via compiler flag `-D_BE_OPTIMIZE_POW=0`.
 
+<a name="Performance"></a>
 ## Performance
 
 Here I mostly do a performance comparison with exprtk. I was initially inspired to create this project after trying out exprtk and seeing how just a basic compilation spans a several minecraft cpvp duels in time (and they're shipping it as single header wtf) producing ginormous file of several MB in size (specifically `exprtk_bridge.cpp` used in this benchmark compiles to 17.2 MB with `g++ -O3 -c exprtk_bridge.cpp -o exprtk_bridge.o` on my machine). Now `gcc -lm -c -O3 -o bexpr.o bexpr.c` takes ~1.8 seconds and produces 79 KB, or ~0.2 seconds and 60 KB without `-O3`.
@@ -284,6 +306,7 @@ Bexpr settings:
 
 All tests performed with `-O3` compiler flag.
 
+<a name="Compilation_benchmark"></a>
 ### Compilation benchmark
 
 This test measures the time it takes to compile an expression string and evaluate it just once. Basically black box eating a string and variables and spitting out a value. Each of 210 expressions from `bench_expr_all.txt` is (compiled and evaluated) 500 times with random variable values.
@@ -299,6 +322,7 @@ Results:
 
 The difference between gcc and clang is negligible. On this test bexpr performs ~17 times faster than exprtk.
 
+<a name="Evaluation_benchmark"></a>
 ### Evaluation benchmark
 
 This test measures evaluation time for a precompiled expression. Each of 210 expressions from `bench_expr_all.txt` is compiled once and evaluated 300000 times.
@@ -314,6 +338,7 @@ Results:
 
 The difference between gcc and clang is again small. On this test exprtk performs ~1.34 times faster than bexpr.
 
+<a name="Busy_loop_benchmark"></a>
 ### Busy loop benchmark
 
 This test measures performance of running a busy loop written within the expression syntax. I chose to use Fibonacci sequence algorithm with the modification of normalizing numbers not to get overflow. The test does 2*10^8 iterations of Fibonacci sequence and exits. Additionally I compare this to pure C implementation and python.
@@ -390,6 +415,7 @@ Here bexpr works much faster with gcc than with clang for some reason, not sure 
 ---
 A known problem is that the pointers that bexpr operates on during evaluation end up being sparse in memory, often even coming from different malloc calls. This may promote cache misses for large programs, but for small ones it's fine. A fix could be to update all pointers to point to a single contiguous buffer after compilation, though not implemented yet
 
+<a name="How_to_run_benchmark"></a>
 ### How to run benchmark
 
 First, get [`exprtk.hpp`](https://github.com/ArashPartow/exprtk/blob/master/exprtk.hpp) and [`bench_expr_all.txt`](https://github.com/ArashPartow/math-parser-benchmark-project/blob/master/bench_expr_all.txt) files. Then compile and run:
@@ -401,6 +427,7 @@ $ ./benchmarks
 ```
 same thing with clang
 
+<a name="AI_disclosure"></a>
 ## AI disclosure
 
 AI was used for consulting, especially during optimization, but not directly for writing code. Everything is written by hand (not even AI autocompletion), except for `exprtk_bridge.cpp` (only used for benchmark) which is written almost entirely by AI.
