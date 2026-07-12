@@ -1,5 +1,3 @@
-// todo: stack limit
-
 #ifndef _BE_BEXPR_INCLUDED
 #define _BE_BEXPR_INCLUDED
 
@@ -44,21 +42,13 @@
 // from my measurements with gcc -O3, each scope eats 864 bytes of stack
 
 #ifdef _MSC_VER
-#define _BE_MULTICHAR   \
-__pragma(warning(push)) \
-__pragma(warning(disable : 4066))
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#define _BE_MULTICHAR __pragma(warning(push)) __pragma(warning(disable : 4066))
+#define _BE_DIAGNOSTIC_POP __pragma(warning(pop))
 #else
-#define _BE_MULTICHAR          \
-_Pragma("GCC diagnostic push") \
-_Pragma("GCC diagnostic ignored \"-Wmultichar\"")
-#endif
-
-#ifdef _MSC_VER
-#define _BE_DIAGNOSTIC_POP \
-__pragma(warning(pop))
-#else
-#define _BE_DIAGNOSTIC_POP \
-_Pragma("GCC diagnostic pop")
+#define _BE_MULTICHAR _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wmultichar\"")
+#define _BE_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
 #endif
 
 typedef struct {
@@ -548,6 +538,8 @@ int be_token2int(be_token_t *token) {
     return _token;
 }
 
+typedef struct { size_t a, b; } be_pair_t;
+
 // parse an expression held in `*line` and write it to `*expr`, allocating it's fields
 // if an error accures all fields are deallocated before returning, otherwise `be_expr_free` shall be called at some point later
 // `*varnames` is a vector of `char*` (not modified in this function) containing names of all variables existing to this point in code
@@ -556,7 +548,7 @@ be_err_t be_expr_parse(be_expr_t *expr, be_tline_t *line, b_vec_t *varnames) {
     err.err = 0;
     b_vec_t brackets;  b_vec_alloc(&brackets , sizeof(be_token_t), _BE_DEFAULT_VEC);
     b_vec_t modifiers; b_vec_alloc(&modifiers, sizeof(be_token_t), _BE_DEFAULT_VEC);
-    b_vec_t *order  = &expr->order;  b_vec_alloc(order , sizeof(struct { size_t a, b; }), _BE_DEFAULT_VEC);
+    b_vec_t *order  = &expr->order;  b_vec_alloc(order , sizeof(be_pair_t), _BE_DEFAULT_VEC);
     b_vec_t *values = &expr->values; b_vec_alloc(values, sizeof(be_value_t), _BE_DEFAULT_VEC);
     if(values->fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto ret; }
     int depth = 0;
@@ -697,7 +689,7 @@ be_err_t be_expr_parse(be_expr_t *expr, be_tline_t *line, b_vec_t *varnames) {
             be_value_t *value = b_vec_get(values, i);
             int p = (value->flags & BE_PRIO) + value->depth * BE_N_PRIOS;
             if(p == prio && i) {
-                struct { size_t a, b; } p;
+                be_pair_t p;
                 p.a = k; p.b = i;
                 b_vec_push(order, &p);
                 if(order->fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto ret; }
@@ -709,7 +701,7 @@ be_err_t be_expr_parse(be_expr_t *expr, be_tline_t *line, b_vec_t *varnames) {
             be_value_t *value = b_vec_get(values, i);
             int p = (value->flags & BE_PRIO) + value->depth * BE_N_PRIOS;
             if((p <= prio || i == 0) && k) {
-                struct { size_t a, b; } p;
+                be_pair_t p;
                 p.a = i; p.b = k;
                 b_vec_push(order, &p);
                 if(order->fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto ret; }
@@ -964,7 +956,7 @@ void be_expr_bake(b_vec_t *ops, be_expr_t *expr, be_var_t *vars) {
     }
     b_vec_t *order = &expr->order;
     for(size_t i = 0; i < order->len; i ++) { // evaluating
-        struct { size_t a, b; } *pair = b_vec_get(order, i);
+        be_pair_t *pair = b_vec_get(order, i);
         be_value_t *left = b_vec_get(values, pair->a);
         be_value_t *right = b_vec_get(values, pair->b);
         while(left->curr_function < left->functions.len) {
