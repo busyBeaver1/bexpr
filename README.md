@@ -15,7 +15,6 @@ This is a relatively fast and light-weight math expression parser and evaluator 
     - [Busy loop benchmark](#Busy_loop_benchmark)
     - [How to run benchmark](#How_to_run_benchmark)
 - [AI disclosure](#AI_disclosure)
-ANC
 
 <a name="API_overview"></a>
 ## API overview
