@@ -10,7 +10,6 @@
 
 // _BE_USE_GCC_LABEL_POINTERS tells whether to use gcc's label pointer extension (also supported in clang) for jumping to operations during evaluation, otherwise switch-case is used
 // increases performance by ~1.2-1.3 times
-#define _BE_USE_GCC_LABEL_POINTERS 0
 #if defined(__GNUC__) && !defined(_BE_USE_GCC_LABEL_POINTERS)
 #define _BE_USE_GCC_LABEL_POINTERS 1
 #elif !defined(_BE_USE_GCC_LABEL_POINTERS)
