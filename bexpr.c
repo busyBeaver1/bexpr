@@ -184,7 +184,7 @@ void be_strerr_to(char *dst, be_err_t *err) {
         case BE_ERR_NONEMPTY_ELSE:       name = "`else` should be followed by `{`";                                               break;
         case BE_ERR_BREAK_DEPTH:         name = "`break` depth is more than allowed";                                             break;
         case BE_ERR_LOOP_DEPTH:          name = "`loop` depth is more than allowed";                                              break;
-        case BE_ERR_NO_EXPR:             name = "Compile-time guarantee that a value is returned failed. Try adding a number to the and as a default return value"; break;
+        case BE_ERR_NO_EXPR:             name = "Compile-time guarantee that a value is returned failed. Try adding a number to the end as a default return value"; break;
         case BE_ERR_EMPTY_ASSIGN:        name = "Empty expression after `:=`";                                                    break;
         // case BE_ERR_TRAP:                name = "Unconditional infinite loop";                                                    break;
         case BE_ERR_EMPTY_OUT:           name = "Empty expression after `:` in a line starting with `@`";                         break;
