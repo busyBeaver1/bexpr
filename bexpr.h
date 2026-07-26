@@ -49,6 +49,10 @@ typedef struct {
     // structure for a compiled program
 } be_code_t;
 
+// check if a value is the NaN with the specific payload, the one that gets passed to `print` on @ with no value and gets returned on timeout (see max_operations in be_code_eval)
+bool be_isnone(double);
+double be_none(); // generate such NaN
+
 // compile a program
 // `*code` is dst for copiled program
 // if an error occures, all fields of `*code` are deallocated automatically, but on success `be_code_free` should be called at some pointe after to deallocate allocated fields of `*code`
@@ -63,7 +67,8 @@ void be_code_free(be_code_t *code);
 // evaluate (run) a compiled program
 // `*code` is the compiled program
 // `vars` is an array containing values for user-defined variables, same number as number of variables specified at compilation (`n_vars`)
-// `max_operations` is cap for how much raw operations may be performed (not to hang in case of infinite loop), 0 means no limit; when the limit is reached NAN is returned
+// `max_operations` is cap for how much raw operations may be performed (not to hang in case of infinite loop), 0 means no limit;
+// when the limit is reached NaN with a special payload is returned, one can check it with be_isnone()
 double be_code_eval(const be_code_t *code, const double *vars, unsigned long long max_operations);
 
 // convert `be_err_t` to a humal-readible string (null-terminated)
