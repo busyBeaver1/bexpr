@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // _BE_USE_GCC_LABEL_POINTERS tells whether to use gcc's label pointer extension (also supported in clang) for jumping to operations during evaluation, otherwise switch-case is used
 // increases performance by ~1.2-1.3 times
@@ -31,7 +32,7 @@
 #endif
 
 #ifndef _BE_UNLIMITED_CASE
-#define _BE_UNLIMITED_CASE 1 // whether to create separate clause for evaluation in case `max_operations`=0 avoiding operation count check, gives <+5% performance benefit but bloats the executable by 6.6 KB
+#define _BE_UNLIMITED_CASE 0 // whether to create separate clause for evaluation in case `max_operations`=0 avoiding operation count check, gives <+5% performance benefit but bloats the executable by 6.6 KB
 #endif
 
 #ifndef _BE_STACK_LIMIT
@@ -45,9 +46,14 @@
 typedef SSIZE_T ssize_t;
 #define _BE_MULTICHAR __pragma(warning(push)) __pragma(warning(disable : 4066))
 #define _BE_DIAGNOSTIC_POP __pragma(warning(pop))
-#else
+#elif defined(__GNUC__)
+#include <sys/types.h>
 #define _BE_MULTICHAR _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wmultichar\"")
 #define _BE_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
+#else
+typedef ptrdiff_t ssize_t;
+#define _BE_MULTICHAR
+#define _BE_DIAGNOSTIC_POP
 #endif
 
 typedef struct {
@@ -115,6 +121,26 @@ void b_vec_concat(b_vec_t *dst, b_vec_t *src) {
 }
 
 typedef double dtype;
+#define _BE_NONE_64 0x7FF8BEBEBEBEBEBE
+#define _BE_NONE_32 0x7FC0BEBE
+unsigned long long _be_none_ull() {
+         if(sizeof(dtype) == 8) return _BE_NONE_64;
+    else if(sizeof(dtype) == 4) return _BE_NONE_32;
+    else *(volatile int*)NULL = 42; // sizeof(double) should be either 4 or 8 and IEEE 754 compliant
+}
+dtype be_none() {
+    dtype none;
+    unsigned long long v = _be_none_ull();
+    memcpy(&none, &v, sizeof(dtype));
+    return none;
+}
+bool be_isnone(dtype x) {
+    unsigned long long v;
+    memcpy(&v, &x, sizeof(dtype));
+    return v == _be_none_ull();
+}
+dtype _be_none_v;
+#define _BE_NONE_PTR ((_be_none_v = be_none()), &_be_none_v)
 
 #define BE_ERR_ILL_CHAR             1
 #define BE_ERR_SCOPE_EXTRA_CLOSE    2
@@ -1340,10 +1366,8 @@ typedef struct {
     // used for remembering where to redirect operations coming before a `break` line when the requested number of scopes is closed
 } be_exit_t;
 
-dtype _be_const_nan = NAN;
-
 void be_push_nop(b_vec_t *ops) {
-    be_op_t rawop = { .op = BE_OP_CONDJUMP, .src1 = &_be_const_nan, .next = (void*)(ops->len + 1), .src2 = (void*)(ops->len + 1) }; // used as NOP
+    be_op_t rawop = { .op = BE_OP_CONDJUMP, .src1 = _BE_NONE_PTR, .next = (void*)(ops->len + 1), .src2 = (void*)(ops->len + 1) }; // used as NOP
     b_vec_push(ops, &rawop);
 }
 
@@ -1392,7 +1416,7 @@ be_err_t be_scope_bake(b_vec_t *ops, b_vec_t *lines, be_var_t *vars, b_vec_t *en
             end_jumping_ops->len = 0;
             goto ret;
         } else if(line->type == BE_LT_OUT || line->type == BE_LT_EMPTY_OUT) {
-            be_op_t rawop = { .op = BE_OP_OUT, .src1 = line->type == BE_LT_EMPTY_OUT ? &_be_const_nan : ((be_value_t*)line->expr.values.ptr)->a_ptr, .src2 = (void*)line->label, .next = (void*)(ops->len + 1) };
+            be_op_t rawop = { .op = BE_OP_OUT, .src1 = line->type == BE_LT_EMPTY_OUT ? _BE_NONE_PTR : ((be_value_t*)line->expr.values.ptr)->a_ptr, .src2 = (void*)line->label, .next = (void*)(ops->len + 1) };
             b_vec_push(ops, &rawop);
             _BE_RESET_END_JUMPS
         } else if(line->type == BE_LT_EXPR) {
@@ -1504,10 +1528,10 @@ dtype be_code_eval(const be_code_t *code, const dtype *vars, unsigned long long 
     if(!_BE_UNLIMITED_CASE || max_operations) {
         unsigned long long k = 0;
         goto *rawop->gnulabel;
-        _BE_OP_CASES(, _,, if(max_operations && ++ k >= max_operations) return NAN; rawop = rawop->next; goto *rawop->gnulabel)
+        _BE_OP_CASES(, _,, if(max_operations && ++ k >= max_operations) return be_none(); rawop = rawop->next; goto *rawop->gnulabel)
         _BE_OP_RETURN: return *rawop->src1;
-        _BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; if(max_operations && ++ k >= max_operations) return NAN; goto *rawop->gnulabel;
-        _BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); if(max_operations && ++ k >= max_operations) return NAN; rawop = rawop->next; goto *rawop->gnulabel;
+        _BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; if(max_operations && ++ k >= max_operations) return be_none(); goto *rawop->gnulabel;
+        _BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); if(max_operations && ++ k >= max_operations) return be_none(); rawop = rawop->next; goto *rawop->gnulabel;
     }
     #if _BE_UNLIMITED_CASE
     else {
@@ -1519,7 +1543,8 @@ dtype be_code_eval(const be_code_t *code, const dtype *vars, unsigned long long 
     }
     #endif
     #else
-    for(unsigned long long k = 0; k < max_operations || max_operations == 0; k ++) {
+    unsigned long long k;
+    for(k = 0; k < max_operations || max_operations == 0; k ++) {
         switch(rawop->op) {
             _BE_OP_CASES(case,, >> BE_RAWOP_SHIFT, break)
             case BE_OP_RETURN   >> BE_RAWOP_SHIFT: return *rawop->src1;
@@ -1529,7 +1554,7 @@ dtype be_code_eval(const be_code_t *code, const dtype *vars, unsigned long long 
         rawop = rawop->next;
     }
     #endif
-    return NAN;
+    return be_none();
 }
 
 // checks whether a vector of `dtype*` contains a specific pointer as an element

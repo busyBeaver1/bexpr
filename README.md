@@ -35,7 +35,7 @@ Here is a basic example:
 #include <math.h>
 
 void print(const char *label, double value) {
-    if(isnan(value)) printf("%s\n", label);
+    if(be_isnone(value)) printf("%s\n", label);
     else printf("%s %g\n", label, value);
 }
 
@@ -95,7 +95,7 @@ Here are all types of lines supported:
 - `else` scope. The syntax is `else { <inner line 1>; <inner line 2>; ... }`. An `else` line must only appear after an `if`, `elif` or `while` line (optionally with empty lines in between)
 - `break`. The syntax is `break<n>` (no whitespace) with `<n>` being a whole positive number, for example `break1`. `break<n>` exits exactly `n` enclosing scopes and jumps to the scope end
 - `loop`. The syntax is `loop<n>` (no whitespace) with `<n>` being a whole positive number, for example `loop1`. `loop<n>` exits exactly `n` enclosing scopes and jumps to the scope beginning
-- Output. The syntax is either `@ <label> : <expression>` or `@ <label>`. `<label>` is any string not containing `;`, `{`, `}`, `:` or `#`, possibly empty. When such a line is encountered a user-defined function `print` (if it's defined) is called with the first argument being null-terminated label and the second being the value of the expression or NaN in case of the variant with no expression.
+- Output. The syntax is either `@ <label> : <expression>` or `@ <label>`. `<label>` is any string not containing `;`, `{`, `}`, `:` or `#`, possibly empty. When such a line is encountered a user-defined function `print` (if it's defined) is called with the first argument being null-terminated label and the second one being the value of the expression or NaN with a special payload (checked with `be_isnone()`) in case of the variant with no expression. You should use `be_isnone()` instead or `isnan()` to distinguish between `@label` and `@label: NAN`
 
 A note on keyword vs variable name collision: Variable name can be `if`, `elif`, `else`, `@`, `break<n>` or `loop<n>`. `if`, `else` and `elif` keywords are detected when finding `}` at the end of the line so there is no conflict with variables. When encountering `@` at the start of a line or `break<n>` or `loop<n>` as the single token of a line it is parsed as usual and not as an expression containing a variable even if one with such name exists. To change that one can wrap it in parentheses.
 
@@ -282,7 +282,7 @@ The example above also demonstrates const power optimization: instead of calling
 <a name="Performance"></a>
 ## Performance
 
-Here I mostly do a performance comparison with exprtk. I was initially inspired to create this project after trying out exprtk and seeing how just a basic compilation spans a several minecraft cpvp duels in time (and they're shipping it as single header wtf) producing ginormous file of several MB in size (specifically `exprtk_bridge.cpp` used in this benchmark compiles to 17.2 MB with `g++ -O3 -c exprtk_bridge.cpp -o exprtk_bridge.o` on my machine). Now `gcc -lm -c -O3 -o bexpr.o bexpr.c` takes ~1.8 seconds and produces 79 KB, or ~0.2 seconds and 60 KB without `-O3`.
+Here I mostly do a performance comparison with exprtk. I was initially inspired to create this project after trying out exprtk and seeing how just a basic compilation spans a several minecraft cpvp duels in time (and they're shipping it as single header wtf) producing ginormous file of several MB in size (specifically `exprtk_bridge.cpp` used in this benchmark compiles to 17.2 MB with `g++ -O3 -c exprtk_bridge.cpp -o exprtk_bridge.o` on my machine). Now `gcc -c -O3 -o bexpr.o bexpr.c` takes ~1.9 seconds and produces 80 KB, or ~0.23 seconds and 65 KB without `-O3`.
 
 For my benchmarks I use [`bench_expr_all.txt` file](https://github.com/ArashPartow/math-parser-benchmark-project/blob/master/bench_expr_all.txt) from [math-parser-benchmark-project](https://github.com/arashpartow/math-parser-benchmark-project). Did not bother to add my parser to their benchmark though that'd be cool.
 
