@@ -1,5 +1,5 @@
-#ifndef _BE_BEXPR_INCLUDED
-#define _BE_BEXPR_INCLUDED
+#ifndef BE_BEXPR_INCLUDED_
+#define BE_BEXPR_INCLUDED_
 
 #include <stdlib.h>
 #include <string.h>
@@ -9,34 +9,34 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// _BE_USE_GCC_LABEL_POINTERS tells whether to use gcc's label pointer extension (also supported in clang) for jumping to operations during evaluation, otherwise switch-case is used
+// BE_USE_GCC_LABEL_POINTERS_ tells whether to use gcc's label pointer extension (also supported in clang) for jumping to operations during evaluation, otherwise switch-case is used
 // increases performance by ~1.2-1.3 times
-#if defined(__GNUC__) && !defined(_BE_USE_GCC_LABEL_POINTERS)
-#define _BE_USE_GCC_LABEL_POINTERS 1
-#elif !defined(_BE_USE_GCC_LABEL_POINTERS)
-#define _BE_USE_GCC_LABEL_POINTERS 0
+#if defined(__GNUC__) && !defined(BE_USE_GCC_LABEL_POINTERS_)
+#define BE_USE_GCC_LABEL_POINTERS_ 1
+#elif !defined(BE_USE_GCC_LABEL_POINTERS_)
+#define BE_USE_GCC_LABEL_POINTERS_ 0
 #endif
 
-#ifndef _BE_DEFAULT_VEC
-#define _BE_DEFAULT_VEC 24 // default init size when allocating a vector
+#ifndef BE_DEFAULT_VEC_
+#define BE_DEFAULT_VEC_ 24 // default init size when allocating a vector
 #endif
 
-#define _B_VEC_GROWTH 2 // reallocation coefficient upon runnig out of capacity
+#define B_VEC_GROWTH_ 2 // reallocation coefficient upon runnig out of capacity
 
-#ifndef _BE_OPTIMIZE_POW
-#define _BE_OPTIMIZE_POW 1 // wether to optimize integer & special powers into other operations than stdlib's `pow`
+#ifndef BE_OPTIMIZE_POW_
+#define BE_OPTIMIZE_POW_ 1 // wether to optimize integer & special powers into other operations than stdlib's `pow`
 #endif
 
-#ifndef _BE_INTPOW_LIMIT
-#define _BE_INTPOW_LIMIT 8 // how many multiplications can be generated when optimizing integer power (if `_BE_OPTIMIZE_POW`=1), up to around 24-32 gives performance benefit, but lots of multiplications become inaccurate
+#ifndef BE_INTPOW_LIMIT_
+#define BE_INTPOW_LIMIT_ 8 // how many multiplications can be generated when optimizing integer power (if `BE_OPTIMIZE_POW_`=1), up to around 24-32 gives performance benefit, but lots of multiplications become inaccurate
 #endif
 
-#ifndef _BE_UNLIMITED_CASE
-#define _BE_UNLIMITED_CASE 0 // whether to create separate clause for evaluation in case `max_operations`=0 avoiding operation count check, gives <+5% performance benefit but bloats the executable by 6.6 KB
+#ifndef BE_UNLIMITED_CASE_
+#define BE_UNLIMITED_CASE_ 0 // whether to create separate clause for evaluation in case `max_operations`=0 avoiding operation count check, gives <+5% performance benefit but bloats the executable by 6.6 KB
 #endif
 
-#ifndef _BE_STACK_LIMIT
-#define _BE_STACK_LIMIT 256 // how many nested scopes are allowed, for preventing stack overflow, -1 for no limit
+#ifndef BE_STACK_LIMIT_
+#define BE_STACK_LIMIT_ 256 // how many nested scopes are allowed, for preventing stack overflow, -1 for no limit
 #endif
 // expression parser is not recursive (not even with parentheses) so it can't cause stack overflow, but scope parser is recursive
 // from my measurements with gcc -O3, each scope eats 864 bytes of stack
@@ -44,16 +44,16 @@
 #ifdef _MSC_VER
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
-#define _BE_MULTICHAR __pragma(warning(push)) __pragma(warning(disable : 4066))
-#define _BE_DIAGNOSTIC_POP __pragma(warning(pop))
+#define BE_MULTICHAR_ __pragma(warning(push)) __pragma(warning(disable : 4066))
+#define BE_DIAGNOSTIC_POP_ __pragma(warning(pop))
 #elif defined(__GNUC__)
 #include <sys/types.h>
-#define _BE_MULTICHAR _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wmultichar\"")
-#define _BE_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
+#define BE_MULTICHAR_ _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wmultichar\"")
+#define BE_DIAGNOSTIC_POP_ _Pragma("GCC diagnostic pop")
 #else
 typedef ptrdiff_t ssize_t;
-#define _BE_MULTICHAR
-#define _BE_DIAGNOSTIC_POP
+#define BE_MULTICHAR_
+#define BE_DIAGNOSTIC_POP_
 #endif
 
 typedef struct {
@@ -85,7 +85,7 @@ void b_vec_reserve(b_vec_t *vec, size_t new_cap) {
 // an element is pushed once even in case of a fail to reallocate occures (but not afterwards)
 void b_vec_push(b_vec_t *vec, void *elt) {
     if(vec->fail) return;
-    if(vec->len >= vec->cap - 1) b_vec_reserve(vec, vec->cap * _B_VEC_GROWTH);
+    if(vec->len >= vec->cap - 1) b_vec_reserve(vec, vec->cap * B_VEC_GROWTH_);
     memcpy((char*)vec->ptr + vec->len * vec->step, elt, vec->step);
     vec->len ++;
 }
@@ -121,26 +121,26 @@ void b_vec_concat(b_vec_t *dst, b_vec_t *src) {
 }
 
 typedef double dtype;
-#define _BE_NONE_64 0x7FF8BEBEBEBEBEBE
-#define _BE_NONE_32 0x7FC0BEBE
-unsigned long long _be_none_ull() {
-         if(sizeof(dtype) == 8) return _BE_NONE_64;
-    else if(sizeof(dtype) == 4) return _BE_NONE_32;
+#define BE_NONE_64_ 0x7FF8BEBEBEBEBEBE
+#define BE_NONE_32_ 0x7FC0BEBE
+unsigned long long be_none_ull_() {
+         if(sizeof(dtype) == 8) return BE_NONE_64_;
+    else if(sizeof(dtype) == 4) return BE_NONE_32_;
     else *(volatile int*)NULL = 42; // sizeof(double) should be either 4 or 8 and IEEE 754 compliant
 }
 dtype be_none() {
     dtype none;
-    unsigned long long v = _be_none_ull();
+    unsigned long long v = be_none_ull_();
     memcpy(&none, &v, sizeof(dtype));
     return none;
 }
 bool be_isnone(dtype x) {
     unsigned long long v;
     memcpy(&v, &x, sizeof(dtype));
-    return v == _be_none_ull();
+    return v == be_none_ull_();
 }
-dtype _be_none_v;
-#define _BE_NONE_PTR ((_be_none_v = be_none()), &_be_none_v)
+dtype be_none_v_;
+#define BE_NONE_PTR_ ((be_none_v_ = be_none()), &be_none_v_)
 
 #define BE_ERR_ILL_CHAR             1
 #define BE_ERR_SCOPE_EXTRA_CLOSE    2
@@ -179,14 +179,14 @@ typedef struct {
     // `char_n` is the number of character (counting from 1) in a line (when `line_start`=`line_end`) that point to the cause of the error, if 0 then the location within line is unknown
 } be_err_t;
 
-#define _BE_STRERR_LEN      256 // should be sufficient capacity
-#define _BE_STRERR_MESSAGES   8 // how many messages can live at a time (at least)
-char _be_strerr[_BE_STRERR_LEN * _BE_STRERR_MESSAGES];
-int _be_strerr_k = 0;
+#define BE_STRERR_LEN_      256 // should be sufficient capacity
+#define BE_STRERR_MESSAGES_   8 // how many messages can live at a time (at least)
+char be_strerr_[BE_STRERR_LEN_ * BE_STRERR_MESSAGES_];
+int be_strerr_k_ = 0;
 
 // same thing as `be_strerr` but writing to a provided destination `dst` rather than preallocated memory. thread-safe unlike `be_strerr`.
 // `dst` should point to preallocated memory of at least 193 bytes (192 characters is the most possible with 64-bit `size_t` + 1 for null terminator)
-// though 256 (=`_BE_STRERR_LEN`) is recommended because I might forget to update this comment
+// though 256 (=`BE_STRERR_LEN_`) is recommended because I might forget to update this comment
 void be_strerr_to(char *dst, be_err_t *err) {
     const char *name;
     dst[0] = '\0';
@@ -226,15 +226,15 @@ void be_strerr_to(char *dst, be_err_t *err) {
     }
     end:
     sprintf(dst + strlen(dst), "%s", name);
-    _be_strerr_k += strlen(dst) + 1;
+    be_strerr_k_ += strlen(dst) + 1;
 }
 
 // convert `be_err_t` to a humal-readible string (null-terminated)
-// up to _BE_STRERR_MESSAGES messages are guarateed to safely coexist at a time (possibly more), then overwriting the oldest ones
+// up to BE_STRERR_MESSAGES_ messages are guarateed to safely coexist at a time (possibly more), then overwriting the oldest ones
 // not thread-safe because it uses global variables to avoid heap-allocation
 char *be_strerr(be_err_t *err) {
-    if(sizeof(_be_strerr) - _be_strerr_k < _BE_STRERR_LEN) _be_strerr_k = 0;
-    char *s = _be_strerr + _be_strerr_k;
+    if(sizeof(be_strerr_) - be_strerr_k_ < BE_STRERR_LEN_) be_strerr_k_ = 0;
+    char *s = be_strerr_ + be_strerr_k_;
     be_strerr_to(s, err);
     return s;
 }
@@ -253,9 +253,9 @@ typedef struct {
     // `text_line` and `text_char` are location in the original program string (counting from 1)
 } be_token_t;
 
-#define _BE_TOKEN2ERR(e, token, code) (e).err = code; (e).line_start = (token)->text_line; (e).line_end = (token)->text_line; (e).char_n = (token)->text_char;
+#define BE_TOKEN2ERR_(e, token, code) (e).err = code; (e).line_start = (token)->text_line; (e).line_end = (token)->text_line; (e).char_n = (token)->text_char;
 
-#define _BE_TOKENCOMP(token, s) (((be_token_t*)(token))->len == sizeof(s) - 1 && strncmp(s, ((be_token_t*)(token))->name, sizeof(s) - 1) == 0)
+#define BE_TOKENCOMP_(token, s) (((be_token_t*)(token))->len == sizeof(s) - 1 && strncmp(s, ((be_token_t*)(token))->name, sizeof(s) - 1) == 0)
 
 // split a null-terminated string into tokens
 // `*tokens` is dst, should be a preallocated vector of be_token_t
@@ -264,9 +264,9 @@ be_err_t be_tokenize(b_vec_t *tokens, const char *str) {
     token.name = NULL;
     bool token_alphadotnumer_ = false;
     int non_number_chars;
-    #define _BE_TOKEN_PUSH if(token.name != NULL) { b_vec_push(tokens, &token); token.name = NULL; token_alphadotnumer_ = false; }
-    #define _BE_TOKEN_ASSIGN { token.text_line = text_line; token.text_char = text_char; token.name = str + i; token.len = char_len; non_number_chars = 0; }
-    #define _BE_ILL_CHAR return (be_err_t){ .err = BE_ERR_ILL_CHAR, .line_start = text_line, .line_end = text_line, .char_n = text_char };
+    #define BE_TOKEN_PUSH_ if(token.name != NULL) { b_vec_push(tokens, &token); token.name = NULL; token_alphadotnumer_ = false; }
+    #define BE_TOKEN_ASSIGN_ { token.text_line = text_line; token.text_char = text_char; token.name = str + i; token.len = char_len; non_number_chars = 0; }
+    #define BE_ILL_CHAR_ return (be_err_t){ .err = BE_ERR_ILL_CHAR, .line_start = text_line, .line_end = text_line, .char_n = text_char };
     size_t text_line = 1;
     size_t text_char = 1;
     bool comment = false;
@@ -277,17 +277,17 @@ be_err_t be_tokenize(b_vec_t *tokens, const char *str) {
         else if((c & 0xE0) == 0xC0) char_len = 2;
         else if((c & 0xF0) == 0xE0) char_len = 3;
         else if((c & 0xF8) == 0xF0) char_len = 4;
-        else _BE_ILL_CHAR
-        for(size_t j = i + 1; j < i + char_len; j ++) if((str[j] & 0b11000000) != 0x80) _BE_ILL_CHAR
-        if(c == '#') { comment = true; _BE_TOKEN_PUSH }
+        else BE_ILL_CHAR_
+        for(size_t j = i + 1; j < i + char_len; j ++) if((str[j] & 0b11000000) != 0x80) BE_ILL_CHAR_
+        if(c == '#') { comment = true; BE_TOKEN_PUSH_ }
         if(comment) goto past_token_check;
         bool space = (9 <= c && c <= 13) || c == ' ';
         bool dotnumer = ('0' <= c && c <= '9') || c == '.';
         bool alphadotnumer_ = !space && ((c & 0x80) || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || dotnumer || c == '_');
-        if(space) { _BE_TOKEN_PUSH }
+        if(space) { BE_TOKEN_PUSH_ }
         else if(alphadotnumer_) {
             if(token_alphadotnumer_) token.len += char_len;
-            else { _BE_TOKEN_PUSH _BE_TOKEN_ASSIGN token_alphadotnumer_ = true; }
+            else { BE_TOKEN_PUSH_ BE_TOKEN_ASSIGN_ token_alphadotnumer_ = true; }
         } else {
             bool comparison_operator = false;
             if(token.name != NULL) {
@@ -296,7 +296,7 @@ be_err_t be_tokenize(b_vec_t *tokens, const char *str) {
             }
             if(comparison_operator && c == '=') token.len ++;
             else if(token.name != NULL && token.len >= 2 && non_number_chars == 1 && str[i - 1] == 'e' && (c == '-' || c == '+')) token.len ++; // keeping numbers in exponential notation integral (not to break like 1e|+|10)
-            else { _BE_TOKEN_PUSH _BE_TOKEN_ASSIGN }
+            else { BE_TOKEN_PUSH_ BE_TOKEN_ASSIGN_ }
         }
         past_token_check:
         if(str[i] == '\n') { text_line ++; text_char = 1; comment = false; }
@@ -306,7 +306,7 @@ be_err_t be_tokenize(b_vec_t *tokens, const char *str) {
         i += char_len;
         non_number_chars += !dotnumer;
     }
-    _BE_TOKEN_PUSH
+    BE_TOKEN_PUSH_
     if(tokens->fail) return (be_err_t){ .err = BE_ERR_ALLOC_FAIL, .line_start = 0 };
     be_err_t err;
     err.err = 0;
@@ -340,7 +340,7 @@ be_err_t be_tlines(b_vec_t *tlines, b_vec_t *tokens) {
         if(*token->name == '{') scope_depth ++;
         if(scope_depth < 0) {
             be_err_t err;
-            _BE_TOKEN2ERR(err, token, BE_ERR_SCOPE_EXTRA_CLOSE)
+            BE_TOKEN2ERR_(err, token, BE_ERR_SCOPE_EXTRA_CLOSE)
             return err;
         }
     }
@@ -435,7 +435,7 @@ be_err_t be_tlines(b_vec_t *tlines, b_vec_t *tokens) {
 
 typedef struct {
     int n;
-    bool choices[_BE_INTPOW_LIMIT]; // true to square, false to multiply by original value
+    bool choices[BE_INTPOW_LIMIT_]; // true to square, false to multiply by original value
     bool neg;
 } be_intpow_t;
 
@@ -452,10 +452,10 @@ void be_intpow_bake(be_intpow_t *p, int _p) {
     while(_p >> i) i ++;
     int k = 0;
     for(i -= 2; i >= 0; i --) {
-        if(k >= _BE_INTPOW_LIMIT) { p->n = -1; return; }
+        if(k >= BE_INTPOW_LIMIT_) { p->n = -1; return; }
         p->choices[k] = true; k ++;
         if((_p >> i) & 1) {
-            if(k >= _BE_INTPOW_LIMIT) { p->n = -1; return; }
+            if(k >= BE_INTPOW_LIMIT_) { p->n = -1; return; }
             p->choices[k] = false; k ++;
         }
     }
@@ -495,9 +495,9 @@ typedef struct be_op_s {
     int op; // operation type, `BE_OP_*` or `BE_FN_*`
     dtype *dst, *src1, *src2, *src3; // destination and sources (some types of operations only use part of those as indicated by `BE_DST` and `BE_SRC*` bits of `op`)
     struct be_op_s *next; // next operaion to execute (unused for `BE_OP_RETURN`), before calling `be_op_prep` contains indices (explicitly casted to pointer type) instead of actual pointers
-    #if _BE_USE_GCC_LABEL_POINTERS
+    #if BE_USE_GCC_LABEL_POINTERS_
     void *gnulabel;
-    #if _BE_UNLIMITED_CASE
+    #if BE_UNLIMITED_CASE_
     void *_gnulabel; // for `max_operations`=0 case
     #endif
     #endif
@@ -521,16 +521,18 @@ int be_check_literal(be_token_t *token, dtype *dst) {
         if(dst) *dst = 2.718281828459045;
         return 0;
     }
-    char *name = malloc(token->len + 1);
+    char *name = token->len < 256 ? (char[256]){} : malloc(token->len + 1);
     if(name == NULL) return -2;
     memcpy(name, token->name, token->len);
     name[token->len] = '\0';
     char *end;
+    int _errno = errno;
     errno = 0;
-    if(dst) *dst = strtod(name, &end);
-    else strtod(name, &end);
-    int ret = (end == name + token->len ? (errno == ERANGE ? 1 : 0) : -1); // solely to avoid gcc's use-after-free warning
-    free(name);
+    dtype res = strtod(name, &end);
+    if(dst) *dst = res;
+    int ret = (end == name + token->len ? (errno == ERANGE ? 1 : 0) : -1);
+    errno = _errno;
+    if(token->len >= 256) free(name);
     return ret;
 }
 
@@ -547,7 +549,7 @@ void be_expr_free(be_expr_t *expr) {
 
 int be_token2int(be_token_t *token) {
     int _token;
-    _BE_MULTICHAR
+    BE_MULTICHAR_
     if(('AB' & 0xF) == 'A') { // endianness of multy-char constants check
         _token = token->name[0];
         if(token->len >= 2) _token |= (int)token->name[1] << 8;
@@ -559,7 +561,7 @@ int be_token2int(be_token_t *token) {
         if(token->len >= 3) _token |= (int)token->name[token->len - 3] << 16;
         if(token->len >= 4) _token |= (int)token->name[token->len - 4] << 24;
     }
-    _BE_DIAGNOSTIC_POP
+    BE_DIAGNOSTIC_POP_
     return _token;
 }
 
@@ -571,10 +573,10 @@ typedef struct { size_t a, b; } be_pair_t;
 be_err_t be_expr_parse(be_expr_t *expr, be_tline_t *line, b_vec_t *varnames) {
     be_err_t err;
     err.err = 0;
-    b_vec_t brackets;  b_vec_alloc(&brackets , sizeof(be_token_t), _BE_DEFAULT_VEC);
-    b_vec_t modifiers; b_vec_alloc(&modifiers, sizeof(be_token_t), _BE_DEFAULT_VEC);
-    b_vec_t *order  = &expr->order;  b_vec_alloc(order , sizeof(be_pair_t), _BE_DEFAULT_VEC);
-    b_vec_t *values = &expr->values; b_vec_alloc(values, sizeof(be_value_t), _BE_DEFAULT_VEC);
+    b_vec_t brackets;  b_vec_alloc(&brackets , sizeof(be_token_t), BE_DEFAULT_VEC_);
+    b_vec_t modifiers; b_vec_alloc(&modifiers, sizeof(be_token_t), BE_DEFAULT_VEC_);
+    b_vec_t *order  = &expr->order;  b_vec_alloc(order , sizeof(be_pair_t), BE_DEFAULT_VEC_);
+    b_vec_t *values = &expr->values; b_vec_alloc(values, sizeof(be_value_t), BE_DEFAULT_VEC_);
     if(values->fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto ret; }
     int depth = 0;
     int max_depth = 0;
@@ -588,25 +590,25 @@ be_err_t be_expr_parse(be_expr_t *expr, be_tline_t *line, b_vec_t *varnames) {
             if(strlen(varname) == token->len && strncmp(varname, token->name, token->len) == 0) {
                 value.flags = BE_VT_VAR | BE_OP_MUL;
                 value.var = j;
-                b_vec_alloc(&value.functions, sizeof(be_fn_t), _BE_DEFAULT_VEC);
+                b_vec_alloc(&value.functions, sizeof(be_fn_t), BE_DEFAULT_VEC_);
                 goto got_value;
             }
         }
         dtype _const;
         int lit = be_check_literal(token, &_const);
         if(lit == -2) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto ret; }
-        if(lit == 1) { _BE_TOKEN2ERR(err, token, BE_ERR_CONSTANT_RANGE) goto ret; }
+        if(lit == 1) { BE_TOKEN2ERR_(err, token, BE_ERR_CONSTANT_RANGE) goto ret; }
         if(lit == 0) {
             value.a_const = _const;
             value.b_const = 0;
             value.flags = BE_VT_CONST | BE_OP_MUL;
-            b_vec_alloc(&value.functions, sizeof(be_fn_t), _BE_DEFAULT_VEC);
+            b_vec_alloc(&value.functions, sizeof(be_fn_t), BE_DEFAULT_VEC_);
             goto got_value;
         }
         if(token->len == 1 && (*token->name == ')' || *token->name == ']')) {
-            if(brackets_up) { _BE_TOKEN2ERR(err, token, BE_ERR_EMPTY_EXPR) goto ret; }
-            if(brackets.len == 0) { _BE_TOKEN2ERR(err, token, BE_ERR_BRACKET_OVERCLOSED) goto ret; }
-            if(**(char**)b_vec_get(&brackets, brackets.len - 1) != (*token->name == ')' ? '(' : '[')) { _BE_TOKEN2ERR(err, token, BE_ERR_BRACKETS_MISMATCH) goto ret; }
+            if(brackets_up) { BE_TOKEN2ERR_(err, token, BE_ERR_EMPTY_EXPR) goto ret; }
+            if(brackets.len == 0) { BE_TOKEN2ERR_(err, token, BE_ERR_BRACKET_OVERCLOSED) goto ret; }
+            if(**(char**)b_vec_get(&brackets, brackets.len - 1) != (*token->name == ')' ? '(' : '[')) { BE_TOKEN2ERR_(err, token, BE_ERR_BRACKETS_MISMATCH) goto ret; }
             brackets.len --; depth --; continue;
         }
         brackets_up = true;
@@ -628,7 +630,7 @@ be_err_t be_expr_parse(be_expr_t *expr, be_tline_t *line, b_vec_t *varnames) {
         if(depth > max_depth) max_depth = depth;
         brackets_up = false;
         bool operation_found = false;
-        _BE_MULTICHAR
+        BE_MULTICHAR_
         if(outer_modifier && values->len > 0 && modifiers.len > 0 && ((be_token_t*)modifiers.ptr)->len <= 2) {
             operation_found = true;
             switch(be_token2int(modifiers.ptr)) {
@@ -680,19 +682,19 @@ be_err_t be_expr_parse(be_expr_t *expr, be_tline_t *line, b_vec_t *varnames) {
                 case 'min' : { be_fn_t f = { .prio = prio , .fn = BE_FN_MIN    }; b_vec_push(&value.functions, &f); } break;
                 case 'sign': { be_fn_t f = { .prio = prio , .fn = BE_FN_SIGN   }; b_vec_push(&value.functions, &f); } break;
                 case 'abs' : { be_fn_t f = { .prio = prio , .fn = BE_FN_ABS    }; b_vec_push(&value.functions, &f); } break;
-                default: { _BE_TOKEN2ERR(err, mod, BE_ERR_ILL_TOKEN) }
+                default: { BE_TOKEN2ERR_(err, mod, BE_ERR_ILL_TOKEN) }
             }
-            else if(_BE_TOKENCOMP(mod, "atan2"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ATAN2   }; b_vec_push(&value.functions, &f); }
-            else if(_BE_TOKENCOMP(mod, "floor"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_FLOOR   }; b_vec_push(&value.functions, &f); }
-            else if(_BE_TOKENCOMP(mod, "round"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ROUND   }; b_vec_push(&value.functions, &f); }
-            else if(_BE_TOKENCOMP(mod, "gamma"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_GAMMA   }; b_vec_push(&value.functions, &f); }
-            else if(_BE_TOKENCOMP(mod, "asinh"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ASINH   }; b_vec_push(&value.functions, &f); }
-            else if(_BE_TOKENCOMP(mod, "acosh"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ACOSH   }; b_vec_push(&value.functions, &f); }
-            else if(_BE_TOKENCOMP(mod, "erfinv" )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ERFINV  }; b_vec_push(&value.functions, &f); }
-            else if(_BE_TOKENCOMP(mod, "sigmoid")) { be_fn_t f = { .prio = prio, .fn = BE_FN_SIGMOID }; b_vec_push(&value.functions, &f); }
-            else { _BE_TOKEN2ERR(err, mod, BE_ERR_ILL_TOKEN) }
+            else if(BE_TOKENCOMP_(mod, "atan2"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ATAN2   }; b_vec_push(&value.functions, &f); }
+            else if(BE_TOKENCOMP_(mod, "floor"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_FLOOR   }; b_vec_push(&value.functions, &f); }
+            else if(BE_TOKENCOMP_(mod, "round"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ROUND   }; b_vec_push(&value.functions, &f); }
+            else if(BE_TOKENCOMP_(mod, "gamma"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_GAMMA   }; b_vec_push(&value.functions, &f); }
+            else if(BE_TOKENCOMP_(mod, "asinh"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ASINH   }; b_vec_push(&value.functions, &f); }
+            else if(BE_TOKENCOMP_(mod, "acosh"  )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ACOSH   }; b_vec_push(&value.functions, &f); }
+            else if(BE_TOKENCOMP_(mod, "erfinv" )) { be_fn_t f = { .prio = prio, .fn = BE_FN_ERFINV  }; b_vec_push(&value.functions, &f); }
+            else if(BE_TOKENCOMP_(mod, "sigmoid")) { be_fn_t f = { .prio = prio, .fn = BE_FN_SIGMOID }; b_vec_push(&value.functions, &f); }
+            else { BE_TOKEN2ERR_(err, mod, BE_ERR_ILL_TOKEN) }
         }
-        _BE_DIAGNOSTIC_POP
+        BE_DIAGNOSTIC_POP_
         if(err.err) { b_vec_free(&value.functions); goto ret; }
         b_vec_push(values, &value);
         if(values->fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto ret; }
@@ -700,11 +702,11 @@ be_err_t be_expr_parse(be_expr_t *expr, be_tline_t *line, b_vec_t *varnames) {
     }
     if(modifiers.len) {
         be_token_t *mod = b_vec_get(&modifiers, modifiers.len - 1);
-        _BE_TOKEN2ERR(err, mod, BE_ERR_ILL_LAST_TOKEN) goto ret;
+        BE_TOKEN2ERR_(err, mod, BE_ERR_ILL_LAST_TOKEN) goto ret;
     }
     if(brackets.len) {
         be_token_t *br = b_vec_get(&brackets, brackets.len - 1);
-        _BE_TOKEN2ERR(err, br, BE_ERR_BRACKET_UNCLOSED)
+        BE_TOKEN2ERR_(err, br, BE_ERR_BRACKET_UNCLOSED)
         goto ret;
     }
     for(int prio = (max_depth + 1) * BE_N_PRIOS; prio --> 0;) {
@@ -777,7 +779,7 @@ dtype be_erfinv(dtype p) {
 }
 
 // part of code to execute raw operation, used for both runtime and compile-time execution
-#define _BE_OP_CASES(prefix, joined, shift, postfix)                                                                                \
+#define BE_OP_CASES_(prefix, joined, shift, postfix)                                                                                \
     prefix joined##BE_OP_SWAP    shift: *rawop->dst = *rawop->src1 != 0 ? *rawop->src2 : *rawop->src3;                     postfix; \
     prefix joined##BE_OP_OR      shift: *rawop->dst = *rawop->src1 != 0 || *rawop->src2 != 0 ? 1 : 0;                      postfix; \
     prefix joined##BE_OP_AND     shift: *rawop->dst = *rawop->src1 != 0 && *rawop->src2 != 0 ? 1 : 0;                      postfix; \
@@ -827,31 +829,31 @@ dtype be_erfinv(dtype p) {
     prefix joined##BE_OP_INTPOW  shift: *rawop->dst = be_intpow((void*)rawop->src2, *rawop->src1);                         postfix; \
     prefix joined##BE_FN_COPY    shift: *rawop->dst = *rawop->src1;                                                        postfix;
 
-#if _BE_USE_GCC_LABEL_POINTERS
-#define _BE_CHECK_LABEL(pref, name) case name >> BE_RAWOP_SHIFT: rawop->pref##gnulabel = &&pref##_##name; break;
-#define _BE_LABEL2PTR(pref)                                                                                                                                                                                          \
+#if BE_USE_GCC_LABEL_POINTERS_
+#define BE_CHECK_LABEL_(pref, name) case name >> BE_RAWOP_SHIFT: rawop->pref##gnulabel = &&L##pref##_##name; break;
+#define BE_LABEL2PTR_(pref)                                                                                                                                                                                          \
 switch(rawop->op) {                                                                                                                                                                                                  \
-    _BE_CHECK_LABEL(pref, BE_OP_SWAP) _BE_CHECK_LABEL(pref, BE_OP_OR) _BE_CHECK_LABEL(pref, BE_OP_AND) _BE_CHECK_LABEL(pref, BE_OP_EQUALS) _BE_CHECK_LABEL(pref, BE_OP_NEQUALS) _BE_CHECK_LABEL(pref, BE_OP_GREATER) \
-    _BE_CHECK_LABEL(pref, BE_OP_LESS) _BE_CHECK_LABEL(pref, BE_OP_GEQ) _BE_CHECK_LABEL(pref, BE_OP_LEQ) _BE_CHECK_LABEL(pref, BE_OP_ADD) _BE_CHECK_LABEL(pref, BE_OP_SUB) _BE_CHECK_LABEL(pref, BE_OP_MOD)           \
-    _BE_CHECK_LABEL(pref, BE_OP_MUL) _BE_CHECK_LABEL(pref, BE_OP_DIV) _BE_CHECK_LABEL(pref, BE_OP_POW) _BE_CHECK_LABEL(pref, BE_FN_NOT) _BE_CHECK_LABEL(pref, BE_FN_SIN) _BE_CHECK_LABEL(pref, BE_FN_COS)            \
-    _BE_CHECK_LABEL(pref, BE_FN_TAN) _BE_CHECK_LABEL(pref, BE_FN_ASIN) _BE_CHECK_LABEL(pref, BE_FN_ACOS) _BE_CHECK_LABEL(pref, BE_FN_ATAN) _BE_CHECK_LABEL(pref, BE_FN_ATAN2) _BE_CHECK_LABEL(pref, BE_FN_FLOOR)     \
-    _BE_CHECK_LABEL(pref, BE_FN_CEIL) _BE_CHECK_LABEL(pref, BE_FN_ROUND) _BE_CHECK_LABEL(pref, BE_FN_LN) _BE_CHECK_LABEL(pref, BE_FN_EXP) _BE_CHECK_LABEL(pref, BE_FN_SQRT) _BE_CHECK_LABEL(pref, BE_FN_CBRT)        \
-    _BE_CHECK_LABEL(pref, BE_FN_GAMMA) _BE_CHECK_LABEL(pref, BE_FN_SINH) _BE_CHECK_LABEL(pref, BE_FN_COSH) _BE_CHECK_LABEL(pref, BE_FN_TANH) _BE_CHECK_LABEL(pref, BE_FN_ASINH) _BE_CHECK_LABEL(pref, BE_FN_ACOSH)   \
-    _BE_CHECK_LABEL(pref, BE_FN_ATANH) _BE_CHECK_LABEL(pref, BE_FN_ERF) _BE_CHECK_LABEL(pref, BE_FN_ERFINV) _BE_CHECK_LABEL(pref, BE_FN_SIGMOID) _BE_CHECK_LABEL(pref, BE_FN_MAX) _BE_CHECK_LABEL(pref, BE_FN_MIN)   \
-    _BE_CHECK_LABEL(pref, BE_FN_NEG) _BE_CHECK_LABEL(pref, BE_FN_RECIPR) _BE_CHECK_LABEL(pref, BE_FN_SIGN) _BE_CHECK_LABEL(pref, BE_FN_ABS) _BE_CHECK_LABEL(pref, BE_OP_INTPOW) _BE_CHECK_LABEL(pref, BE_FN_COPY)    \
-    _BE_CHECK_LABEL(pref, BE_OP_CONDJUMP) _BE_CHECK_LABEL(pref, BE_OP_RETURN) _BE_CHECK_LABEL(pref, BE_OP_OUT)                                                                                                       \
+    BE_CHECK_LABEL_(pref, BE_OP_SWAP) BE_CHECK_LABEL_(pref, BE_OP_OR) BE_CHECK_LABEL_(pref, BE_OP_AND) BE_CHECK_LABEL_(pref, BE_OP_EQUALS) BE_CHECK_LABEL_(pref, BE_OP_NEQUALS) BE_CHECK_LABEL_(pref, BE_OP_GREATER) \
+    BE_CHECK_LABEL_(pref, BE_OP_LESS) BE_CHECK_LABEL_(pref, BE_OP_GEQ) BE_CHECK_LABEL_(pref, BE_OP_LEQ) BE_CHECK_LABEL_(pref, BE_OP_ADD) BE_CHECK_LABEL_(pref, BE_OP_SUB) BE_CHECK_LABEL_(pref, BE_OP_MOD)           \
+    BE_CHECK_LABEL_(pref, BE_OP_MUL) BE_CHECK_LABEL_(pref, BE_OP_DIV) BE_CHECK_LABEL_(pref, BE_OP_POW) BE_CHECK_LABEL_(pref, BE_FN_NOT) BE_CHECK_LABEL_(pref, BE_FN_SIN) BE_CHECK_LABEL_(pref, BE_FN_COS)            \
+    BE_CHECK_LABEL_(pref, BE_FN_TAN) BE_CHECK_LABEL_(pref, BE_FN_ASIN) BE_CHECK_LABEL_(pref, BE_FN_ACOS) BE_CHECK_LABEL_(pref, BE_FN_ATAN) BE_CHECK_LABEL_(pref, BE_FN_ATAN2) BE_CHECK_LABEL_(pref, BE_FN_FLOOR)     \
+    BE_CHECK_LABEL_(pref, BE_FN_CEIL) BE_CHECK_LABEL_(pref, BE_FN_ROUND) BE_CHECK_LABEL_(pref, BE_FN_LN) BE_CHECK_LABEL_(pref, BE_FN_EXP) BE_CHECK_LABEL_(pref, BE_FN_SQRT) BE_CHECK_LABEL_(pref, BE_FN_CBRT)        \
+    BE_CHECK_LABEL_(pref, BE_FN_GAMMA) BE_CHECK_LABEL_(pref, BE_FN_SINH) BE_CHECK_LABEL_(pref, BE_FN_COSH) BE_CHECK_LABEL_(pref, BE_FN_TANH) BE_CHECK_LABEL_(pref, BE_FN_ASINH) BE_CHECK_LABEL_(pref, BE_FN_ACOSH)   \
+    BE_CHECK_LABEL_(pref, BE_FN_ATANH) BE_CHECK_LABEL_(pref, BE_FN_ERF) BE_CHECK_LABEL_(pref, BE_FN_ERFINV) BE_CHECK_LABEL_(pref, BE_FN_SIGMOID) BE_CHECK_LABEL_(pref, BE_FN_MAX) BE_CHECK_LABEL_(pref, BE_FN_MIN)   \
+    BE_CHECK_LABEL_(pref, BE_FN_NEG) BE_CHECK_LABEL_(pref, BE_FN_RECIPR) BE_CHECK_LABEL_(pref, BE_FN_SIGN) BE_CHECK_LABEL_(pref, BE_FN_ABS) BE_CHECK_LABEL_(pref, BE_OP_INTPOW) BE_CHECK_LABEL_(pref, BE_FN_COPY)    \
+    BE_CHECK_LABEL_(pref, BE_OP_CONDJUMP) BE_CHECK_LABEL_(pref, BE_OP_RETURN) BE_CHECK_LABEL_(pref, BE_OP_OUT)                                                                                                       \
 }
 #endif
 
 // execute raw operation in compile time
 be_op_t *be_rawop_exec(be_op_t *rawop) {
     switch(rawop->op) {
-        _BE_OP_CASES(case,,, break)
+        BE_OP_CASES_(case,,, break)
     }
     return rawop->next;
 }
 
-dtype _be_const_1 = 1; // do not change this, it is the src for copying from to implement zero power
+dtype be_const_1_ = 1; // do not change this, it is the src for copying from to implement zero power
 
 // turn operation/function on 2 values into raw operation(s) or execute in compile time
 // new operation(s) get push onto `*ops` vector of be_op_t, it should be preallocated and may already contain operations; this finction is `ops->fail`-agnostic
@@ -859,24 +861,24 @@ dtype _be_const_1 = 1; // do not change this, it is the src for copying from to 
 // for unary functions `left` and `right` should be the same
 // op is operation type, either `BE_OP_*` or `BE_FN_*`
 void be_bake_op(b_vec_t *ops, be_value_t *left, be_value_t *right, int op) {
-    #define _BE_TRANSFER_CONSTNESS(dst, dst_flag, src, src_flag) if((src)->flags & src_flag) (dst)->flags |= dst_flag; else (dst)->flags &= ~dst_flag;
+    #define BE_TRANSFER_CONSTNESS_(dst, dst_flag, src, src_flag) if((src)->flags & src_flag) (dst)->flags |= dst_flag; else (dst)->flags &= ~dst_flag;
     if(op == BE_FN_COPY) return; // empty function, just copy
     be_op_t rawop;
     if(op == BE_OP_PAIR) {
         left->b_ptr = right->a_ptr;
-        _BE_TRANSFER_CONSTNESS(left, BE_B_CONST, right, BE_A_CONST)
+        BE_TRANSFER_CONSTNESS_(left, BE_B_CONST, right, BE_A_CONST)
     } else if(op == BE_OP_SWAP) {
         if(left->flags & BE_A_CONST) {
             if(*left->a_ptr != 0) {
                 left->a_ptr = right->a_ptr;
                 left->b_ptr = right->b_ptr;
-                _BE_TRANSFER_CONSTNESS(left, BE_A_CONST, right, BE_A_CONST)
-                _BE_TRANSFER_CONSTNESS(left, BE_B_CONST, right, BE_B_CONST)
+                BE_TRANSFER_CONSTNESS_(left, BE_A_CONST, right, BE_A_CONST)
+                BE_TRANSFER_CONSTNESS_(left, BE_B_CONST, right, BE_B_CONST)
             } else {
                 left->a_ptr = right->b_ptr;
                 left->b_ptr = right->a_ptr;
-                _BE_TRANSFER_CONSTNESS(left, BE_A_CONST, right, BE_B_CONST)
-                _BE_TRANSFER_CONSTNESS(left, BE_B_CONST, right, BE_A_CONST)
+                BE_TRANSFER_CONSTNESS_(left, BE_A_CONST, right, BE_B_CONST)
+                BE_TRANSFER_CONSTNESS_(left, BE_B_CONST, right, BE_A_CONST)
             }
         } else {
             rawop.op = op;
@@ -921,9 +923,9 @@ void be_bake_op(b_vec_t *ops, be_value_t *left, be_value_t *right, int op) {
             left->flags &= ~BE_B_CONST;
         }
     } else {
-        #define _BE_POW_CASES                                                                                                                                       \
+        #define BE_POW_CASES_                                                                                                                                       \
         dtype _p = p > 0 ? p : -p;                                                                                                                                  \
-             if(_p ==    0) { rawop.src1 = &_be_const_1; rawop.op = BE_FN_COPY; b_vec_push(ops, &rawop); }                                                          \
+             if(_p ==    0) { rawop.src1 = &be_const_1_; rawop.op = BE_FN_COPY; b_vec_push(ops, &rawop); }                                                          \
         else if(_p ==  .25) { rawop.op = BE_FN_SQRT; b_vec_push(ops, &rawop); rawop.src1 = rawop.dst; b_vec_push(ops, &rawop); }                                    \
         else if(_p == 1./3) { rawop.op = BE_FN_CBRT; b_vec_push(ops, &rawop); }                                                                                     \
         else if(_p == 2./3) { rawop.op = BE_FN_CBRT; b_vec_push(ops, &rawop); rawop.src2 = rawop.src1 = rawop.dst; rawop.op = BE_OP_MUL; b_vec_push(ops, &rawop); } \
@@ -947,11 +949,11 @@ void be_bake_op(b_vec_t *ops, be_value_t *left, be_value_t *right, int op) {
             dtype *_dst = rawop.dst = const_fold ? (k ? &left->b_const : &left->a_const) : (k ? &left->b : &left->a);
             bool power1 = false;
             bool special_case = false;
-            #if _BE_OPTIMIZE_POW
+            #if BE_OPTIMIZE_POW_
             if(op == BE_OP_POW && (right->flags & const_flag)) {
                 special_case = true;
                 dtype p = (k ? *right->b_ptr : *right->a_ptr);
-                _BE_POW_CASES
+                BE_POW_CASES_
             }
             #endif
             if(!special_case) { b_vec_push(ops, &rawop); left->flags &= ~const_flag; }
@@ -1057,10 +1059,10 @@ be_err_t be_line_parse(be_line_t *line, be_tline_t *tokens, b_vec_t *varnames, s
 be_err_t be_parse_tokens(b_vec_t *lines, b_vec_t *tokens, b_vec_t *varnames, size_t depth, bool *breaks, bool *loops) {
     be_err_t err;
     err.err = 0;
-    if(_BE_STACK_LIMIT > 0 && depth > _BE_STACK_LIMIT + 1) { err.err = BE_ERR_STACK_DEPTH; err.line_start = 0; return err; }
+    if(BE_STACK_LIMIT_ > 0 && depth > BE_STACK_LIMIT_ + 1) { err.err = BE_ERR_STACK_DEPTH; err.line_start = 0; return err; }
     size_t n_vars = varnames->len;
     b_vec_t tlines;
-    b_vec_alloc(&tlines, sizeof(be_tline_t), _BE_DEFAULT_VEC);
+    b_vec_alloc(&tlines, sizeof(be_tline_t), BE_DEFAULT_VEC_);
     err = be_tlines(&tlines, tokens); // this does malloc check on tlines
     if(err.err) goto ret;
     bool reached = true;
@@ -1135,45 +1137,45 @@ be_err_t be_line_parse(be_line_t *line, be_tline_t *tokens, b_vec_t *varnames, s
     if(line->breaks == NULL || line->loops == NULL) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto ret; }
     int break_depth = be_jump_depth(tokens->ptr, "break");
     if(break_depth >= depth) {
-        _BE_TOKEN2ERR(err, tokens->ptr, BE_ERR_BREAK_DEPTH)
+        BE_TOKEN2ERR_(err, tokens->ptr, BE_ERR_BREAK_DEPTH)
         err.char_n += 5;
         goto ret;
     }
     int loop_depth = be_jump_depth(tokens->ptr, "loop");
     if(loop_depth > depth) {
-        _BE_TOKEN2ERR(err, tokens->ptr, BE_ERR_LOOP_DEPTH)
+        BE_TOKEN2ERR_(err, tokens->ptr, BE_ERR_LOOP_DEPTH)
         err.char_n += 4;
         goto ret;
     }
     if(*tokens->ptr[tokens->len - 1].name == '}') {
         int k = 1;
-        bool is_elif = _BE_TOKENCOMP(tokens->ptr, "elif");
-        bool is_while = _BE_TOKENCOMP(tokens->ptr, "while");
-        if(is_while || is_elif || _BE_TOKENCOMP(tokens->ptr, "if")) {
+        bool is_elif = BE_TOKENCOMP_(tokens->ptr, "elif");
+        bool is_while = BE_TOKENCOMP_(tokens->ptr, "while");
+        if(is_while || is_elif || BE_TOKENCOMP_(tokens->ptr, "if")) {
             line->type = is_elif ? BE_LT_ELIF : BE_LT_IF;
             while(k < tokens->len - 1 && *tokens->ptr[k].name != '{') k ++;
             line->texpr.ptr = tokens->ptr + 1;
             line->texpr.len = k - 1;
-            if(line->texpr.len == 0) { _BE_TOKEN2ERR(err, tokens->ptr + k, is_elif ? BE_ERR_EMPTY_ELIF : is_while ? BE_ERR_EMPTY_WHILE : BE_ERR_EMPTY_IF) goto ret; }
+            if(line->texpr.len == 0) { BE_TOKEN2ERR_(err, tokens->ptr + k, is_elif ? BE_ERR_EMPTY_ELIF : is_while ? BE_ERR_EMPTY_WHILE : BE_ERR_EMPTY_IF) goto ret; }
             err = be_expr_parse(&line->expr, &line->texpr, varnames);
             if(err.err) goto ret;
             k ++;
-        } else if(_BE_TOKENCOMP(tokens->ptr, "else")) {
+        } else if(BE_TOKENCOMP_(tokens->ptr, "else")) {
             line->type = BE_LT_ELSE;
-            if(*tokens->ptr[1].name != '{') { _BE_TOKEN2ERR(err, tokens->ptr + 1, BE_ERR_NONEMPTY_ELSE) goto ret; }
+            if(*tokens->ptr[1].name != '{') { BE_TOKEN2ERR_(err, tokens->ptr + 1, BE_ERR_NONEMPTY_ELSE) goto ret; }
             k = 2;
         }
         else if(*tokens->ptr->name == '{') line->type = BE_LT_SCOPE;
-        else { _BE_TOKEN2ERR(err, tokens->ptr, BE_ERR_SCOPE_START) goto ret; }
+        else { BE_TOKEN2ERR_(err, tokens->ptr, BE_ERR_SCOPE_START) goto ret; }
         if((line->type & BE_FOLLOWUP) && !if_chain) {
             if(line->type & BE_EXPR) be_expr_free(&line->expr);
-            _BE_TOKEN2ERR(err, tokens->ptr, BE_ERR_MISFOLLOWUP) goto ret;
+            BE_TOKEN2ERR_(err, tokens->ptr, BE_ERR_MISFOLLOWUP) goto ret;
         }
         b_vec_t inner_tokens;
         inner_tokens.ptr = tokens->ptr + k;
         inner_tokens.len = tokens->len - 1 - k;
         inner_tokens.step = sizeof(be_token_t);
-        b_vec_alloc(&line->inner_lines, sizeof(be_line_t), _BE_DEFAULT_VEC);
+        b_vec_alloc(&line->inner_lines, sizeof(be_line_t), BE_DEFAULT_VEC_);
         if(line->inner_lines.fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; }
         else err = be_parse_tokens(&line->inner_lines, &inner_tokens, varnames, depth + 1, line->breaks, line->loops);
         if(err.err) {
@@ -1203,12 +1205,12 @@ be_err_t be_line_parse(be_line_t *line, be_tline_t *tokens, b_vec_t *varnames, s
         line->breaks[depth] = true;
         size_t k;
         char *varname = NULL;
-        // if(tokens->len >= 2 && _BE_TOKENCOMP(tokens->ptr + 1, ":=")) {
+        // if(tokens->len >= 2 && BE_TOKENCOMP_(tokens->ptr + 1, ":=")) {
         char c;
         if(tokens->len >= 2) c = tokens->ptr[1].name[0];
         if(tokens->len >= 2 && tokens->ptr[1].len == 2 && tokens->ptr[1].name[1] == '=' && (c == ':' || c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '&' || c == '|' || c == '^')) {
             if(tokens->len == 2) {
-                _BE_TOKEN2ERR(err, tokens->ptr + 1, BE_ERR_EMPTY_ASSIGN)
+                BE_TOKEN2ERR_(err, tokens->ptr + 1, BE_ERR_EMPTY_ASSIGN)
                 err.char_n += 2;
                 goto ret;
             }
@@ -1280,7 +1282,7 @@ typedef struct {
     be_var_t *vars; // array of variables, user-provided variables go to beginning of this array, rest is for holding values of variables defined in code of the program
     void (*print)(const char*, dtype); // function that gets called on `@` operations, if set to NULL it is not called
     size_t n_vars; // number of user-defined variables
-    // #if _BE_USE_GCC_LABEL_POINTERS
+    // #if BE_USE_GCC_LABEL_POINTERS_
     bool _be_gnulabel_filler_call;
     // #endif
 
@@ -1343,14 +1345,14 @@ void be_bake_assign(b_vec_t *ops, be_line_t *line, be_var_t *vars, size_t line_f
             ((rawop->op & BE_SRC3) && rawop->src3 == var_b)) b_unoptimized = true;
     }
     rawop.op = BE_FN_COPY;
-    #define _BE_COPY_A if(!a_optimized) { rawop.src1 = a_ptr; rawop.dst = var_a; rawop.next = (be_op_t*)(ops->len + 1); b_vec_push(ops, &rawop); }
-    #define _BE_COPY_B if(!b_optimized) { rawop.src1 = b_ptr; rawop.dst = var_b; rawop.next = (be_op_t*)(ops->len + 1); b_vec_push(ops, &rawop); }
+    #define BE_COPY_A_ if(!a_optimized) { rawop.src1 = a_ptr; rawop.dst = var_a; rawop.next = (be_op_t*)(ops->len + 1); b_vec_push(ops, &rawop); }
+    #define BE_COPY_B_ if(!b_optimized) { rawop.src1 = b_ptr; rawop.dst = var_b; rawop.next = (be_op_t*)(ops->len + 1); b_vec_push(ops, &rawop); }
     if(b_ptr != var_a) {
-        _BE_COPY_A
-        _BE_COPY_B
+        BE_COPY_A_
+        BE_COPY_B_
     } else if(a_ptr != var_b) {
-        _BE_COPY_B
-        _BE_COPY_A
+        BE_COPY_B_
+        BE_COPY_A_
     } else { // swap
         dtype *temp = &((be_value_t*)line->expr.values.ptr)->a;
         rawop.src1 = var_a; rawop.dst = temp ; rawop.next = (be_op_t*)(ops->len + 1); b_vec_push(ops, &rawop);
@@ -1367,7 +1369,7 @@ typedef struct {
 } be_exit_t;
 
 void be_push_nop(b_vec_t *ops) {
-    be_op_t rawop = { .op = BE_OP_CONDJUMP, .src1 = _BE_NONE_PTR, .next = (void*)(ops->len + 1), .src2 = (void*)(ops->len + 1) }; // used as NOP
+    be_op_t rawop = { .op = BE_OP_CONDJUMP, .src1 = BE_NONE_PTR_, .next = (void*)(ops->len + 1), .src2 = (void*)(ops->len + 1) }; // used as NOP
     b_vec_push(ops, &rawop);
 }
 
@@ -1383,19 +1385,19 @@ be_err_t be_scope_bake(b_vec_t *ops, b_vec_t *lines, be_var_t *vars, b_vec_t *en
     if(entering_stack->fail) return (be_err_t){ .err = BE_ERR_ALLOC_FAIL, .line_start = 0 };
     be_err_t err = { .err = 0, .line_start = 0 };
     b_vec_push(entering_stack, &entering_op);
-    #define _BE_RESET_END_JUMPS { end_jumping_ops->len = 0; size_t prelast = ops->len - 1; b_vec_push(end_jumping_ops, &prelast); }
+    #define BE_RESET_END_JUMPS_ { end_jumping_ops->len = 0; size_t prelast = ops->len - 1; b_vec_push(end_jumping_ops, &prelast); }
     for(size_t i = 0; i < lines->len; i ++) {
         cnt:;
         be_line_t *line = b_vec_get(lines, i);
         size_t line_first_op = ops->len;
         if((line->type & BE_EXPR) && line->type != BE_LT_IF) {
             be_expr_bake(ops, &line->expr, vars);
-            if(ops->len > line_first_op) _BE_RESET_END_JUMPS
+            if(ops->len > line_first_op) BE_RESET_END_JUMPS_
         }
         if(line->type == BE_LT_ASSIGN) {
             size_t _ops_len = ops->len;
             be_bake_assign(ops, line, vars, line_first_op);
-            if(ops->len > _ops_len) _BE_RESET_END_JUMPS
+            if(ops->len > _ops_len) BE_RESET_END_JUMPS_
         } else if(line->type == BE_LT_BREAK) {
             if(line->depth == 1) goto ret;
             for(size_t i = 0; i < end_jumping_ops->len; i ++) {
@@ -1411,18 +1413,18 @@ be_err_t be_scope_bake(b_vec_t *ops, b_vec_t *lines, be_var_t *vars, b_vec_t *en
             goto ret;
         } else if(line->type == BE_LT_LOOP) {
             size_t dst = *(size_t*)b_vec_get(entering_stack, entering_stack->len - line->depth);
-            if(dst == ops->len) { be_push_nop(ops); _BE_RESET_END_JUMPS }
+            if(dst == ops->len) { be_push_nop(ops); BE_RESET_END_JUMPS_ }
             be_redirect_ops(ops, end_jumping_ops, ops->len, dst);
             end_jumping_ops->len = 0;
             goto ret;
         } else if(line->type == BE_LT_OUT || line->type == BE_LT_EMPTY_OUT) {
-            be_op_t rawop = { .op = BE_OP_OUT, .src1 = line->type == BE_LT_EMPTY_OUT ? _BE_NONE_PTR : ((be_value_t*)line->expr.values.ptr)->a_ptr, .src2 = (void*)line->label, .next = (void*)(ops->len + 1) };
+            be_op_t rawop = { .op = BE_OP_OUT, .src1 = line->type == BE_LT_EMPTY_OUT ? BE_NONE_PTR_ : ((be_value_t*)line->expr.values.ptr)->a_ptr, .src2 = (void*)line->label, .next = (void*)(ops->len + 1) };
             b_vec_push(ops, &rawop);
-            _BE_RESET_END_JUMPS
+            BE_RESET_END_JUMPS_
         } else if(line->type == BE_LT_EXPR) {
             be_op_t rawop = { .op = BE_OP_RETURN, .src1 = ((be_value_t*)line->expr.values.ptr)->a_ptr, .next = (void*)(ops->len + 1) };
             b_vec_push(ops, &rawop);
-            _BE_RESET_END_JUMPS
+            BE_RESET_END_JUMPS_
             goto ret;
         } else if(line->type == BE_LT_IF) {
             size_t j;
@@ -1457,7 +1459,7 @@ be_err_t be_scope_bake(b_vec_t *ops, b_vec_t *lines, be_var_t *vars, b_vec_t *en
 
 be_err_t be_if_ch_bake(b_vec_t *ops, b_vec_t *lines, be_var_t *vars, b_vec_t *entering_stack, b_vec_t *exiting_stack, b_vec_t *end_jumping_ops) {
     be_err_t err = { .err = 0, .line_start = 0 };
-    b_vec_t chain_end_jumpers; b_vec_alloc(&chain_end_jumpers, sizeof(size_t), _BE_DEFAULT_VEC);
+    b_vec_t chain_end_jumpers; b_vec_alloc(&chain_end_jumpers, sizeof(size_t), BE_DEFAULT_VEC_);
     for(size_t i = 0; i < lines->len; i ++) {
         size_t line_start_op = ops->len;
         be_line_t *line = b_vec_get(lines, i);
@@ -1467,7 +1469,7 @@ be_err_t be_if_ch_bake(b_vec_t *ops, b_vec_t *lines, be_var_t *vars, b_vec_t *en
             be_op_t rawop = { .op = BE_OP_CONDJUMP, .src1 = ((be_value_t*)line->expr.values.ptr)->a_ptr, .next = (void*)(ops->len + 1), .src2 = (void*)-2 }; // -2 is placeholder for the next clause
             condjump = ops->len;
             b_vec_push(ops, &rawop);
-            _BE_RESET_END_JUMPS
+            BE_RESET_END_JUMPS_
         }
         err = be_scope_bake(ops, &line->inner_lines, vars, entering_stack, exiting_stack, end_jumping_ops, line_start_op);
         if(err.err) goto ret;
@@ -1489,7 +1491,7 @@ be_err_t be_if_ch_bake(b_vec_t *ops, b_vec_t *lines, be_var_t *vars, b_vec_t *en
     return err;
 }
 
-bool _be_skip_rawop_shift = false; // left for debug purpaces, used in cli
+bool be_skip_rawop_shift_ = false; // left for debug purpaces, used in cli
 
 // change `next` fields from indeces to actual pointers and apply >>BE_RAWOP_SHIFT for a dense jump table
 // `*ops` is a vector of `be_op_t`
@@ -1498,7 +1500,7 @@ void be_op_prep(b_vec_t *ops) {
         be_op_t *rawop = b_vec_get(ops, i);
         rawop->next = (be_op_t*)ops->ptr + (size_t)rawop->next;
         if(rawop->op == BE_OP_CONDJUMP) rawop->src2 = (void*)((be_op_t*)ops->ptr + (size_t)rawop->src2);
-        if(!_be_skip_rawop_shift) rawop->op >>= BE_RAWOP_SHIFT;
+        if(!be_skip_rawop_shift_) rawop->op >>= BE_RAWOP_SHIFT;
     }
 }
 
@@ -1507,13 +1509,13 @@ void be_op_prep(b_vec_t *ops) {
 // `vars` is an array containing values for user-defined variables, same number as number of variables specified at compilation (`n_vars`)
 // `max_operations` is cap for how much raw operations may be performed (not to hang in case of infinite loop), 0 means no limit; when the limit is reached NAN is returned
 dtype be_code_eval(const be_code_t *code, const dtype *vars, unsigned long long max_operations) {
-    #if _BE_USE_GCC_LABEL_POINTERS
+    #if BE_USE_GCC_LABEL_POINTERS_
     if(code->_be_gnulabel_filler_call) {
         for(size_t i = 0; i < code->ops.len; i ++) {
             be_op_t *rawop = b_vec_get((void*)&code->ops, i);
-            _BE_LABEL2PTR()
-            #if _BE_UNLIMITED_CASE
-            _BE_LABEL2PTR(_)
+            BE_LABEL2PTR_()
+            #if BE_UNLIMITED_CASE_
+            BE_LABEL2PTR_(_)
             #endif
         }
         return 0;
@@ -1524,29 +1526,29 @@ dtype be_code_eval(const be_code_t *code, const dtype *vars, unsigned long long 
         code->vars[i].b = 0;
     }
     be_op_t *rawop = code->ops.ptr;
-    #if _BE_USE_GCC_LABEL_POINTERS
-    if(!_BE_UNLIMITED_CASE || max_operations) {
+    #if BE_USE_GCC_LABEL_POINTERS_
+    if(!BE_UNLIMITED_CASE_ || max_operations) {
         unsigned long long k = 0;
         goto *rawop->gnulabel;
-        _BE_OP_CASES(, _,, if(max_operations && ++ k >= max_operations) return be_none(); rawop = rawop->next; goto *rawop->gnulabel)
-        _BE_OP_RETURN: return *rawop->src1;
-        _BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; if(max_operations && ++ k >= max_operations) return be_none(); goto *rawop->gnulabel;
-        _BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); if(max_operations && ++ k >= max_operations) return be_none(); rawop = rawop->next; goto *rawop->gnulabel;
+        BE_OP_CASES_(, L_,, if(max_operations && ++ k >= max_operations) return be_none(); rawop = rawop->next; goto *rawop->gnulabel)
+        L_BE_OP_RETURN: return *rawop->src1;
+        L_BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; if(max_operations && ++ k >= max_operations) return be_none(); goto *rawop->gnulabel;
+        L_BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); if(max_operations && ++ k >= max_operations) return be_none(); rawop = rawop->next; goto *rawop->gnulabel;
     }
-    #if _BE_UNLIMITED_CASE
+    #if BE_UNLIMITED_CASE_
     else {
         goto *rawop->_gnulabel;
-        _BE_OP_CASES(, __,, rawop = rawop->next; goto *rawop->_gnulabel)
-        __BE_OP_RETURN: return *rawop->src1;
-        __BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; goto *rawop->_gnulabel;
-        __BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); rawop = rawop->next; goto *rawop->_gnulabel;
+        BE_OP_CASES_(, L__,, rawop = rawop->next; goto *rawop->_gnulabel)
+        L__BE_OP_RETURN: return *rawop->src1;
+        L__BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; goto *rawop->_gnulabel;
+        L__BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); rawop = rawop->next; goto *rawop->_gnulabel;
     }
     #endif
     #else
     unsigned long long k;
     for(k = 0; k < max_operations || max_operations == 0; k ++) {
         switch(rawop->op) {
-            _BE_OP_CASES(case,, >> BE_RAWOP_SHIFT, break)
+            BE_OP_CASES_(case,, >> BE_RAWOP_SHIFT, break)
             case BE_OP_RETURN   >> BE_RAWOP_SHIFT: return *rawop->src1;
             case BE_OP_CONDJUMP >> BE_RAWOP_SHIFT: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; continue;
             case BE_OP_OUT      >> BE_RAWOP_SHIFT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); break;
@@ -1598,7 +1600,7 @@ be_err_t be_optimize_dead_ends(b_vec_t *ops) {
         loop_idx ++;
     }
     for(size_t i = 0; i < ops->len; i ++) {
-        b_vec_alloc(importants + i, sizeof(dtype*), _BE_DEFAULT_VEC);
+        b_vec_alloc(importants + i, sizeof(dtype*), BE_DEFAULT_VEC_);
         if(importants[i].fail) {
             for(size_t j = 0; j < i; j ++) b_vec_free(importants + j);
             free(importants); free(unoptimized);
@@ -1664,7 +1666,7 @@ be_err_t be_optimize_dead_ends(b_vec_t *ops) {
     return err;
 }
 
-bool _be_skip_dead_end_optimization = false; // left for debug purpaces, used in cli
+bool be_skip_dead_end_optimization_ = false; // left for debug purpaces, used in cli
 
 // compile a program
 // `*code` is dst for copiled program
@@ -1673,15 +1675,15 @@ bool _be_skip_dead_end_optimization = false; // left for debug purpaces, used in
 // `varnames` is an array of null-terminated strings indicating names of user-defined variables that will have to be passed into `be_code_eval` on each evaluation
 // `n_vars` is the number of user-defined variables. If `n_vars`=0, `varnames` is not read and can be set to NULL or anything
 be_err_t be_code_compile(be_code_t *code, const char *program, const char **varnames, size_t n_vars) {
-    b_vec_t tokens; b_vec_alloc(&tokens, sizeof(be_token_t), _BE_DEFAULT_VEC);
+    b_vec_t tokens; b_vec_alloc(&tokens, sizeof(be_token_t), BE_DEFAULT_VEC_);
     be_err_t err = be_tokenize(&tokens, program);
     if(err.err) goto end1;
 
-    b_vec_t _varnames; b_vec_alloc(&_varnames, sizeof(char*), _BE_DEFAULT_VEC <= n_vars ? n_vars + 1 : _BE_DEFAULT_VEC);
+    b_vec_t _varnames; b_vec_alloc(&_varnames, sizeof(char*), BE_DEFAULT_VEC_ <= n_vars ? n_vars + 1 : BE_DEFAULT_VEC_);
     for(size_t i = 0; i < n_vars; i ++) b_vec_push(&_varnames, varnames + i);
     if(_varnames.fail) { b_vec_free(&_varnames); err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto end1; }
 
-    b_vec_alloc(&code->lines, sizeof(be_line_t), _BE_DEFAULT_VEC);
+    b_vec_alloc(&code->lines, sizeof(be_line_t), BE_DEFAULT_VEC_);
     if(code->lines.fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto end2; }
     bool loops[2];
     bool breaks[2];
@@ -1692,15 +1694,15 @@ be_err_t be_code_compile(be_code_t *code, const char *program, const char **varn
     code->vars = malloc(_n_vars * sizeof(be_var_t));
     if(code->vars == NULL) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto end2; }
     
-    b_vec_t entering_stack; b_vec_alloc(&entering_stack, sizeof(size_t), _BE_DEFAULT_VEC);
-    b_vec_t exiting_stack; b_vec_alloc(&exiting_stack, sizeof(be_exit_t), _BE_DEFAULT_VEC);
-    b_vec_t end_jumping_ops; b_vec_alloc(&end_jumping_ops, sizeof(size_t), _BE_DEFAULT_VEC);
-    b_vec_alloc(&code->ops, sizeof(be_op_t), _BE_DEFAULT_VEC);
+    b_vec_t entering_stack; b_vec_alloc(&entering_stack, sizeof(size_t), BE_DEFAULT_VEC_);
+    b_vec_t exiting_stack; b_vec_alloc(&exiting_stack, sizeof(be_exit_t), BE_DEFAULT_VEC_);
+    b_vec_t end_jumping_ops; b_vec_alloc(&end_jumping_ops, sizeof(size_t), BE_DEFAULT_VEC_);
+    b_vec_alloc(&code->ops, sizeof(be_op_t), BE_DEFAULT_VEC_);
     // err = be_code_bake(code, &entering_stack, &end_jumping_ops);
     err = be_scope_bake(&code->ops, &code->lines, code->vars, &entering_stack, &exiting_stack, &end_jumping_ops, 0);
     b_vec_free(&entering_stack); b_vec_free(&exiting_stack); b_vec_free(&end_jumping_ops);
     if(err.err) goto end3;
-    if(!_be_skip_dead_end_optimization) {
+    if(!be_skip_dead_end_optimization_) {
         err = be_optimize_dead_ends(&code->ops);
         if(err.err) goto end3;
     }
@@ -1715,7 +1717,7 @@ be_err_t be_code_compile(be_code_t *code, const char *program, const char **varn
     b_vec_free(&_varnames);
     end1:
     b_vec_free(&tokens);
-    #if _BE_USE_GCC_LABEL_POINTERS
+    #if BE_USE_GCC_LABEL_POINTERS_
     if(err.err == 0) {
         code->_be_gnulabel_filler_call = true;
         be_code_eval(code, NULL, 0);

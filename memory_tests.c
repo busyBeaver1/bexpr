@@ -50,7 +50,7 @@ void _free(void *ptr) {
 #define calloc(num, size) _calloc(num, size, __LINE__, __FILE__)
 #define free _free
 
-#define _BE_STACK_LIMIT 3
+#define BE_STACK_LIMIT_ 3
 
 #include "bexpr.c"
 

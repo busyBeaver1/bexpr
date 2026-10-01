@@ -88,11 +88,11 @@ void log_lines(b_vec_t *lines, int depth) {
     }
 }
 
-void _iterate_exprs(b_vec_t *lines, b_vec_t *exprs) {
+void iterate_exprs_(b_vec_t *lines, b_vec_t *exprs) {
     for(int i = 0; i < lines->len; i ++) {
         be_line_t *line = b_vec_get(lines, i);
         if(line->type & BE_EXPR) b_vec_push(exprs, &line->expr);
-        if(line->type & BE_INNER_LINES) _iterate_exprs(&line->inner_lines, exprs);
+        if(line->type & BE_INNER_LINES) iterate_exprs_(&line->inner_lines, exprs);
     }
 }
 
@@ -106,15 +106,15 @@ char *b_dupprintf(int overhead, const char *s, ...) {
     return buf;
 }
 
-char _be_name[100];
-const char *_name_ptr(void *ptr, b_vec_t *known_ptrs, b_vec_t *known_ptr_names) {
+char be_name_[100];
+const char *name_ptr_(void *ptr, b_vec_t *known_ptrs, b_vec_t *known_ptr_names) {
     if(known_ptrs == NULL) return "?";
     for(int j = 0; j < known_ptr_names->len; j ++) {
         if(ptr == *(dtype**)b_vec_get(known_ptrs, j))
             return *(char**)b_vec_get(known_ptr_names, j);
     }
-    sprintf(_be_name, "%p", ptr);
-    return _be_name;
+    sprintf(be_name_, "%p", ptr);
+    return be_name_;
 }
 
 const char *op2str(int op) {
@@ -177,7 +177,7 @@ const char *op2str(int op) {
 }
 
 void log_rawop(b_vec_t *ops, be_op_t *rawop, b_vec_t *known_ptrs, b_vec_t *known_ptr_names) {
-    if(BE_DST & rawop->op) printf("%s := ", _name_ptr(rawop->dst, known_ptrs, known_ptr_names));
+    if(BE_DST & rawop->op) printf("%s := ", name_ptr_(rawop->dst, known_ptrs, known_ptr_names));
     printf("%s(", op2str(rawop->op & BE_OP));
     if(rawop->op == BE_OP_OUT) printf("\"%s\", ", (char*)rawop->src2);
     int bits[] = { BE_SRC1, BE_SRC2, BE_SRC3 };
@@ -185,7 +185,7 @@ void log_rawop(b_vec_t *ops, be_op_t *rawop, b_vec_t *known_ptrs, b_vec_t *known
     int args_printed = 0;
     for(int k = 0; k < 3; k ++) {
         if((bits[k] & rawop->op) == 0) continue;
-        printf("%s%s", args_printed ++ ? ", " : "", _name_ptr(ptrs[k], known_ptrs, known_ptr_names));
+        printf("%s%s", args_printed ++ ? ", " : "", name_ptr_(ptrs[k], known_ptrs, known_ptr_names));
     }
     if(rawop->op == BE_OP_CONDJUMP) printf("); goto %zd:%zd", (ssize_t)rawop->next, (ssize_t)rawop->src2);
     else if(rawop->op == BE_OP_RETURN) printf(")");
@@ -195,12 +195,14 @@ void log_rawop(b_vec_t *ops, be_op_t *rawop, b_vec_t *known_ptrs, b_vec_t *known
     //     b_vec_t *imps = importants + i;
     //     // printf("%i", imps->len);
     //     for(size_t k = 0; k < imps->len; k ++) {
-    //         printf("%s; ", _name_ptr(*(dtype**)b_vec_get(imps, k), &known_ptrs, &known_ptr_names));
+    //         printf("%s; ", name_ptr_(*(dtype**)b_vec_get(imps, k), &known_ptrs, &known_ptr_names));
     //     }
     //     if((rawop->op & BE_DST) == 0 || be_vec_contains_ptr(imps, rawop->dst)) printf("!!!");
     // }
     printf("\n");
 }
+
+dtype be_const_nan_ = NAN;
 
 // void log_rawops(b_vec_t *ops, b_vec_t *lines, be_var_t *vars, b_vec_t *importants) {
 void log_rawops(b_vec_t *ops, b_vec_t *lines, be_var_t *vars) {
@@ -217,7 +219,7 @@ void log_rawops(b_vec_t *ops, b_vec_t *lines, be_var_t *vars) {
         b_vec_push(&known_ptr_names, &name_b);
     }
     b_vec_t exprs; b_vec_alloc(&exprs, sizeof(be_expr_t), 8);
-    _iterate_exprs(lines, &exprs);
+    iterate_exprs_(lines, &exprs);
     if(exprs.fail) goto alloc_fail;
     for(int i = 0; i < exprs.len; i ++) {
         be_expr_t *expr = b_vec_get(&exprs, i);
@@ -236,7 +238,7 @@ void log_rawops(b_vec_t *ops, b_vec_t *lines, be_var_t *vars) {
             name = b_dupprintf(64, "expr%i-value%i.b_const=%g", i, j, *ptr); b_vec_push(&known_ptr_names, &name);
             ptr = (void*)&((be_value_t*)b_vec_get(&expr->values, j))->ip;
             int m = ((be_intpow_t*)ptr)->n + ((be_intpow_t*)ptr)->neg;
-            if(0 <= m && m <= _BE_INTPOW_LIMIT) {
+            if(0 <= m && m <= BE_INTPOW_LIMIT_) {
                 name = malloc(m + 1);
                 name[0] = '-';
                 for(int i = 0; i < ((be_intpow_t*)ptr)->n; i ++) name[i + ((be_intpow_t*)ptr)->neg] = ((be_intpow_t*)ptr)->choices[i] ? 's' : 'm';
@@ -246,9 +248,9 @@ void log_rawops(b_vec_t *ops, b_vec_t *lines, be_var_t *vars) {
             }
         }
     }
-    dtype *ptr = &_be_const_1; b_vec_push(&known_ptrs, &ptr);
+    dtype *ptr = &be_const_1_; b_vec_push(&known_ptrs, &ptr);
     char *const_1 = b_dupprintf(-1, "%s", "1"); b_vec_push(&known_ptr_names, &const_1);
-    dtype *_nan_src = &_be_const_nan; b_vec_push(&known_ptrs, &_nan_src);
+    dtype *_nan_src = &be_const_nan_; b_vec_push(&known_ptrs, &_nan_src);
     char *_nan = b_dupprintf(1, "%s", "NaN"); b_vec_push(&known_ptr_names, &_nan);
     if(known_ptrs.fail || known_ptr_names.fail) goto alloc_fail;
     printf("Raw operations:\n");

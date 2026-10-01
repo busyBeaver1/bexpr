@@ -1,5 +1,5 @@
-#ifndef _BE_BEXPR_H_INCLUDED
-#define _BE_BEXPR_H_INCLUDED
+#ifndef BE_BEXPR_H_INCLUDED_
+#define BE_BEXPR_H_INCLUDED_
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -42,7 +42,7 @@ typedef struct {
     be_var_t *vars; // array of variables, user-provided variables go to beginning of this array, rest is for holding values of variables defined in code of the program
     void (*print)(const char*, double); // function that gets called on `@` operations, if set to NULL it is not called
     size_t n_vars; // number of user-defined variables
-    // #if _BE_USE_GCC_LABEL_POINTERS
+    // #if BE_USE_GCC_LABEL_POINTERS_
     bool _be_gnulabel_filler_call;
     // #endif
 
@@ -72,12 +72,12 @@ void be_code_free(be_code_t *code);
 double be_code_eval(const be_code_t *code, const double *vars, unsigned long long max_operations);
 
 // convert `be_err_t` to a humal-readible string (null-terminated)
-// up to _BE_STRERR_MESSAGES messages are guarateed to safely coexist at a time (possibly more), then overwriting the oldest ones
+// up to BE_STRERR_MESSAGES_ messages are guarateed to safely coexist at a time (possibly more), then overwriting the oldest ones
 // not thread-safe because it uses global variables to avoid heap-allocation
 char *be_strerr(be_err_t *err);
 
 // same thing as `be_strerr` but writing to a provided destination `dst` rather than preallocated memory. thread-safe unlike `be_strerr`.
-// `dst` should point to preallocated memory of at least 193 bytes (192 characters is the most possible with 64-bit `size_t` + 1 for null terminator) though 256 (=`_BE_STRERR_LEN`) is recommended
+// `dst` should point to preallocated memory of at least 193 bytes (192 characters is the most possible with 64-bit `size_t` + 1 for null terminator) though 256 (=`BE_STRERR_LEN_`) is recommended
 void be_strerr_to(char *dst, be_err_t *err);
 
 #ifdef __cplusplus

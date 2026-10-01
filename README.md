@@ -71,7 +71,7 @@ When compiling you should link against standard `math.h` library, e.g.
 $ gcc -lm -O3 -o example example.c
 ```
 
-There are 6 user-facing definitions: `_BE_USE_GCC_LABEL_POINTERS`, `_BE_OPTIMIZE_POW`, `_BE_INTPOW_LIMIT`, `_BE_UNLIMITED_CASE`, `_BE_STACK_LIMIT`, that can slightly alter bexpr's behavior (for explanation reference comments in `bexpr.c`).
+There are 6 user-facing definitions: `BE_USE_GCC_LABEL_POINTERS_`, `BE_OPTIMIZE_POW_`, `BE_INTPOW_LIMIT_`, `BE_UNLIMITED_CASE_`, `BE_STACK_LIMIT_`, that can slightly alter bexpr's behavior (for explanation reference comments in `bexpr.c`).
 
 <a name="Syntax"></a>
 ## Syntax
@@ -277,7 +277,7 @@ $ gcc -O3 -lm bexpr_cli.c -o bexpr
 ```
 
 ---
-The example above also demonstrates const power optimization: instead of calling `POW(x, 1.5)` it does `temp := SQRT(x); temp * x` (pseudo-code). Such optimizations are performed for powers of: 0, 1/4, 1/3, 1/2, 2/3, 1.5 and negations of those and all integer powers that can be done in no more than 8 (`_BE_INTPOW_LIMIT`) multiplications. Note that the optimization may create a small difference from a direct `pow` call, e.g. `pow(0.33333, 3) = 0.03703592593703701` (in C) but in bexpr `0.33333^3 = 0.037035925937037` (optimized). For small powers optimized version is more accurate but for large powers it is less accurate than `pow`. The optimizations can be disabled by `#define _BE_OPTIMIZE_POW 0` before `bexpr.c` or via compiler flag `-D_BE_OPTIMIZE_POW=0`.
+The example above also demonstrates const power optimization: instead of calling `POW(x, 1.5)` it does `temp := SQRT(x); temp * x` (pseudo-code). Such optimizations are performed for powers of: 0, 1/4, 1/3, 1/2, 2/3, 1.5 and negations of those and all integer powers that can be done in no more than 8 (`BE_INTPOW_LIMIT_`) multiplications. Note that the optimization may create a small difference from a direct `pow` call, e.g. `pow(0.33333, 3) = 0.03703592593703701` (in C) but in bexpr `0.33333^3 = 0.037035925937037` (optimized). For small powers optimized version is more accurate but for large powers it is less accurate than `pow`. The optimizations can be disabled by `#define BE_OPTIMIZE_POW_ 0` before `bexpr.c` or via compiler flag `-D_BE_OPTIMIZE_POW=0`.
 
 <a name="Performance"></a>
 ## Performance
@@ -298,10 +298,10 @@ Bexpr settings:
 
 | definition                 | value |
 | -------------------------- | ----- |
-| _BE_USE_GCC_LABEL_POINTERS | 1     |
-| _BE_OPTIMIZE_POW           | 1     |
-| _BE_INTPOW_LIMIT           | 8     |
-| _BE_UNLIMITED_CASE         | 1     |
+| BE_USE_GCC_LABEL_POINTERS_ | 1     |
+| BE_OPTIMIZE_POW_           | 1     |
+| BE_INTPOW_LIMIT_           | 8     |
+| BE_UNLIMITED_CASE_         | 1     |
 
 All tests performed with `-O3` compiler flag.
 
@@ -420,7 +420,7 @@ A known problem is that the pointers that bexpr operates on during evaluation en
 First, get [`exprtk.hpp`](https://github.com/ArashPartow/exprtk/blob/master/exprtk.hpp) and [`bench_expr_all.txt`](https://github.com/ArashPartow/math-parser-benchmark-project/blob/master/bench_expr_all.txt) files. Then compile and run:
 ```bash
 $ g++ -O3 -c exprtk_bridge.cpp -o exprtk_bridge.o
-$ gcc -O3 -c bexpr.c -o bexpr.o
+$ gcc -DBE_UNLIMITED_CASE_=1 -O3 -c bexpr.c -o bexpr.o
 $ gcc -O3 benchmarks.c -lm -lstdc++ bexpr.o exprtk_bridge.o -o benchmarks
 $ ./benchmarks
 ```

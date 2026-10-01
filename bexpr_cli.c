@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <math.h>
 
-// #define _BE_USE_GCC_LABEL_POINTERS 1
+// #define BE_USE_GCC_LABEL_POINTERS_ 1
 
 #include "bexpr.c"
 #include "debug_utils.c"
@@ -21,14 +21,14 @@ char *read_stdin() {
     return s.ptr;
 }
 
-char _be_print_buf[64];
+char be_print_buf_[64];
 
 char *be_double2str(double x) {
     for(int prec = 15; prec <= 17; prec ++) {
-        sprintf(_be_print_buf, "%.*g", prec, x);
-        if(atof(_be_print_buf) == x) return _be_print_buf;
+        sprintf(be_print_buf_, "%.*g", prec, x);
+        if(atof(be_print_buf_) == x) return be_print_buf_;
     }
-    return _be_print_buf;
+    return be_print_buf_;
 }
 
 void print(const char *label, dtype x) {
@@ -70,12 +70,12 @@ int main(int argc, char **argv) {
     char *program = read_stdin();
     be_err_t err;
     if(debug_mode) {
-        b_vec_t tokens; b_vec_alloc(&tokens, sizeof(be_token_t), _BE_DEFAULT_VEC);
+        b_vec_t tokens; b_vec_alloc(&tokens, sizeof(be_token_t), BE_DEFAULT_VEC_);
         err = be_tokenize(&tokens, program);
         if(err.err) goto tokens;
         log_tokens(&tokens);
 
-        b_vec_t tlines; b_vec_alloc(&tlines, sizeof(be_tline_t), _BE_DEFAULT_VEC);
+        b_vec_t tlines; b_vec_alloc(&tlines, sizeof(be_tline_t), BE_DEFAULT_VEC_);
         err = be_tlines(&tlines, &tokens);
         if(err.err) goto tlines;
         log_tlines(&tlines);
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
         for(size_t i = 0; i < n_vars; i ++) b_vec_push(&_varnames, varnames + i);
         if(_varnames.fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto varnames; }
 
-        b_vec_t lines; b_vec_alloc(&lines, sizeof(be_line_t), _BE_DEFAULT_VEC);
+        b_vec_t lines; b_vec_alloc(&lines, sizeof(be_line_t), BE_DEFAULT_VEC_);
         if(lines.fail) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto varnames; }
         bool breaks[2];
         bool loops[2];
@@ -97,14 +97,14 @@ int main(int argc, char **argv) {
 
         be_var_t *vars = malloc(sizeof(be_var_t) * _n_vars);
         if(vars == NULL) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto vars; }
-        b_vec_t entering_stack;  b_vec_alloc(&entering_stack,  sizeof(size_t),    _BE_DEFAULT_VEC);
-        b_vec_t exiting_stack;   b_vec_alloc(&exiting_stack,   sizeof(be_exit_t), _BE_DEFAULT_VEC);
-        b_vec_t end_jumping_ops; b_vec_alloc(&end_jumping_ops, sizeof(size_t),    _BE_DEFAULT_VEC);
-        b_vec_t ops;             b_vec_alloc(&ops,             sizeof(be_op_t),   _BE_DEFAULT_VEC);
+        b_vec_t entering_stack;  b_vec_alloc(&entering_stack,  sizeof(size_t),    BE_DEFAULT_VEC_);
+        b_vec_t exiting_stack;   b_vec_alloc(&exiting_stack,   sizeof(be_exit_t), BE_DEFAULT_VEC_);
+        b_vec_t end_jumping_ops; b_vec_alloc(&end_jumping_ops, sizeof(size_t),    BE_DEFAULT_VEC_);
+        b_vec_t ops;             b_vec_alloc(&ops,             sizeof(be_op_t),   BE_DEFAULT_VEC_);
         err = be_scope_bake(&ops, &lines, vars, &entering_stack, &exiting_stack, &end_jumping_ops, 0);
         b_vec_free(&entering_stack); b_vec_free(&exiting_stack); b_vec_free(&end_jumping_ops);
         if(err.err) goto ops;
-        _be_skip_rawop_shift = true;
+        be_skip_rawop_shift_ = true;
         // be_op_prep(&ops);
         log_rawops(&ops, &lines, vars);
 
