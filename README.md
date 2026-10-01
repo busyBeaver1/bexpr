@@ -277,7 +277,7 @@ $ gcc -O3 -lm bexpr_cli.c -o bexpr
 ```
 
 ---
-The example above also demonstrates const power optimization: instead of calling `POW(x, 1.5)` it does `temp := SQRT(x); temp * x` (pseudo-code). Such optimizations are performed for powers of: 0, 1/4, 1/3, 1/2, 2/3, 1.5 and negations of those and all integer powers that can be done in no more than 8 (`BE_INTPOW_LIMIT_`) multiplications. Note that the optimization may create a small difference from a direct `pow` call, e.g. `pow(0.33333, 3) = 0.03703592593703701` (in C) but in bexpr `0.33333^3 = 0.037035925937037` (optimized). For small powers optimized version is more accurate but for large powers it is less accurate than `pow`. The optimizations can be disabled by `#define BE_OPTIMIZE_POW_ 0` before `bexpr.c` or via compiler flag `-D_BE_OPTIMIZE_POW=0`.
+The example above also demonstrates const power optimization: instead of calling `POW(x, 1.5)` it does `temp := SQRT(x); temp * x` (pseudo-code). Such optimizations are performed for powers of: 0, 1/4, 1/3, 1/2, 2/3, 1.5 and negations of those and all integer powers that can be done in no more than 8 (`BE_INTPOW_LIMIT_`) multiplications. Note that the optimization may create a small difference from a direct `pow` call, e.g. `pow(0.33333, 3) = 0.03703592593703701` (in C) but in bexpr `0.33333^3 = 0.037035925937037` (optimized). For small powers optimized version is more accurate but for large powers it is less accurate than `pow`. The optimizations can be disabled by `#define BE_OPTIMIZE_POW_ 0` before `bexpr.c` or via compiler flag `-DBE_OPTIMIZE_POW_=0`.
 
 <a name="Performance"></a>
 ## Performance
