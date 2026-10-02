@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <locale.h>
 
 // BE_USE_GCC_LABEL_POINTERS_ tells whether to use gcc's label pointer extension (also supported in clang) for jumping to operations during evaluation, otherwise switch-case is used
 // increases performance by ~1.2-1.3 times
@@ -511,7 +512,55 @@ typedef struct {
     // expression
 } be_expr_t;
 
-// 0 if valid number, 1 if overflow, -1 if invalid, -2 on malloc returning NULL
+
+bool be_loc_c_inited_ = false;
+#if defined(_WIN32) || defined(_WIN64)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+_locale_t be_loc_c_;
+SRWLOCK be_loc_c_mutex_ = SRWLOCK_INIT;
+_locale_t be_get_loc_c_() {
+    AcquireSRWLockExclusive(&be_loc_c_mutex_);
+    if(!be_loc_c_inited_) {
+        be_loc_c_ = _create_locale(LC_NUMERIC, "C");
+        be_loc_c_inited_ = true;
+    }
+    _locale_t r = be_loc_c_;
+    ReleaseSRWLockExclusive(&be_loc_c_mutex_);
+    return r;
+}
+#else
+#include <pthread.h>
+locale_t be_loc_c_;
+pthread_mutex_t be_loc_c_mutex_ = PTHREAD_MUTEX_INITIALIZER;
+locale_t be_get_loc_c_() {
+    pthread_mutex_lock(&be_loc_c_mutex_);
+    if(!be_loc_c_inited_) {
+        be_loc_c_ = newlocale(LC_NUMERIC_MASK, "C", (locale_t)0);
+        be_loc_c_inited_ = true;
+    }
+    locale_t r = be_loc_c_;
+    pthread_mutex_unlock(&be_loc_c_mutex_);
+    return r;
+}
+#endif
+
+// returns -1 on newlocale returning NULL on POSIX
+int be_strtod_(dtype *dst, const char *s, char **end) {
+    #if defined(_WIN32) || defined(_WIN64)
+    _locale_t loc = be_get_loc_c_();
+    *dst = _strtod_l(s, end, loc);
+    #else
+    locale_t loc = be_get_loc_c_();
+    if(loc == (locale_t)0) return -1;
+    locale_t _loc = uselocale(loc);
+    *dst = strtod(s, end);
+    uselocale(_loc);
+    #endif
+    return 0;
+}
+
+// 0 if valid number, 1 if overflow, -1 if invalid, -2 on malloc or newlocale returning NULL
 int be_check_literal(be_token_t *token, dtype *dst) {
     if(token->len == 2 && (token->name[0] == 'p' || token->name[0] == 'P') && (token->name[1] == 'i' || token->name[1] == 'I')) {
         if(dst) *dst = 3.141592653589793;
@@ -521,18 +570,20 @@ int be_check_literal(be_token_t *token, dtype *dst) {
         if(dst) *dst = 2.718281828459045;
         return 0;
     }
-    char *name = token->len < 256 ? (char[256]){} : malloc(token->len + 1);
+    char buf[256];
+    char *name = token->len < sizeof buf ? buf : malloc(token->len + 1);
     if(name == NULL) return -2;
     memcpy(name, token->name, token->len);
     name[token->len] = '\0';
     char *end;
     int _errno = errno;
     errno = 0;
-    dtype res = strtod(name, &end);
-    if(dst) *dst = res;
-    int ret = (end == name + token->len ? (errno == ERANGE ? 1 : 0) : -1);
+    dtype res;
+    int r = be_strtod_(&res, name, &end);
+    if(dst && r == 0) *dst = res;
+    int ret = r < 0 ? 2 : (end == name + token->len ? (errno == ERANGE ? 1 : 0) : -1);
     errno = _errno;
-    if(token->len >= 256) free(name);
+    if(token->len >= sizeof buf) free(name);
     return ret;
 }
 
