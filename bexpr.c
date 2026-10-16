@@ -192,32 +192,32 @@ void be_strerr_to(char *dst, be_err_t *err) {
     const char *name;
     dst[0] = '\0';
     switch(err->err) {
-        case 0:                          name = "No error";                                                                       break;
-        case BE_ERR_ILL_CHAR:            name = "Unsupported character";                                                          break;
-        case BE_ERR_SCOPE_EXTRA_CLOSE:   name = "Extra closing `}` with no respective `{`";                                       break;
-        case BE_ERR_SCOPE_UNCLOSED:      name = "Unclosed `{`";                                                                   break;
-        case BE_ERR_ILL_LAST_TOKEN:      name = "Last non-bracket token must be a variable or a constant";                        break;
-        case BE_ERR_ILL_TOKEN:           name = "Unknown token";                                                                  break;
-        case BE_ERR_CONSTANT_RANGE:      name = "Numerical constant out of range";                                                break;
-        case BE_ERR_BRACKETS_MISMATCH:   name = "Brackets mismatch";                                                              break;
-        case BE_ERR_BRACKET_UNCLOSED:    name = "Bracket not closed";                                                             break;
-        case BE_ERR_BRACKET_OVERCLOSED:  name = "More closing brackets than opening ones";                                        break;
-        case BE_ERR_EMPTY_EXPR:          name = "Empty expression";                                                               break;
-        case BE_ERR_SCOPE_START:         name = "A line which is a scope should start with `{`, `if`, `elif`, `else` or `while`"; break;
-        case BE_ERR_EMPTY_IF:            name = "An expression expected between `if` and `{`";                                    break;
-        case BE_ERR_EMPTY_WHILE:         name = "An expression expected between `while` and `{`";                                 break;
-        case BE_ERR_EMPTY_ELIF:          name = "An expression expected between `elif` and `{`";                                  break;
-        case BE_ERR_MISFOLLOWUP:         name = "An `elif` or `else` line can only be placed directly after an `if` or `elif`";   break;
-        case BE_ERR_NONEMPTY_ELSE:       name = "`else` should be followed by `{`";                                               break;
-        case BE_ERR_BREAK_DEPTH:         name = "`break` depth is more than allowed";                                             break;
-        case BE_ERR_LOOP_DEPTH:          name = "`loop` depth is more than allowed";                                              break;
-        case BE_ERR_NO_EXPR:             name = "Compile-time guarantee that a value is returned failed. Try adding a number to the end as a default return value"; break;
-        case BE_ERR_EMPTY_ASSIGN:        name = "Empty expression after `:=`";                                                    break;
-        // case BE_ERR_TRAP:                name = "Unconditional infinite loop";                                                    break;
-        case BE_ERR_EMPTY_OUT:           name = "Empty expression after `:` in a line starting with `@`";                         break;
-        case BE_ERR_ALLOC_FAIL:          name = "Out of memory during compilation; malloc or calloc returned NULL";               break;
-        case BE_ERR_STACK_DEPTH:         name = "Nested scope depth exceeded";                                                    break;
-        default:                         name = "Unknown error";                                                                  goto end;
+        case 0:                          name = "No error";                                                          break;
+        case BE_ERR_ILL_CHAR:            name = "Unsupported character";                                             break;
+        case BE_ERR_SCOPE_EXTRA_CLOSE:   name = "Closing `}` without a matching `{`";                                break;
+        case BE_ERR_SCOPE_UNCLOSED:      name = "Unclosed `{`";                                                      break;
+        case BE_ERR_ILL_LAST_TOKEN:      name = "Unknown token at the end of the expression";                        break;
+        case BE_ERR_ILL_TOKEN:           name = "Unknown token";                                                     break;
+        case BE_ERR_CONSTANT_RANGE:      name = "Numeric constant out of range";                                     break;
+        case BE_ERR_BRACKETS_MISMATCH:   name = "Brackets mismatch";                                                 break;
+        case BE_ERR_BRACKET_UNCLOSED:    name = "Unclosed bracket";                                                  break;
+        case BE_ERR_BRACKET_OVERCLOSED:  name = "More closing brackets than opening ones";                           break;
+        case BE_ERR_EMPTY_EXPR:          name = "Empty expression";                                                  break;
+        case BE_ERR_SCOPE_START:         name = "A scope may only be prefixed with `if`, `elif`, `else` or `while`"; break;
+        case BE_ERR_EMPTY_IF:            name = "Expected an expression between `if` and `{`";                       break;
+        case BE_ERR_EMPTY_WHILE:         name = "Expected an expression between `while` and `{`";                    break;
+        case BE_ERR_EMPTY_ELIF:          name = "Expected an expression between `elif` and `{`";                     break;
+        case BE_ERR_MISFOLLOWUP:         name = "An `elif` or `else` may only be placed after an `if` or `elif`";    break;
+        case BE_ERR_NONEMPTY_ELSE:       name = "`else` must be followed by `{`";                                    break;
+        case BE_ERR_BREAK_DEPTH:         name = "`break` depth is more than allowed";                                break;
+        case BE_ERR_LOOP_DEPTH:          name = "`loop` depth is more than allowed";                                 break;
+        case BE_ERR_NO_EXPR:             name = "Not all paths return a value";                                      break;
+        case BE_ERR_EMPTY_ASSIGN:        name = "Expression an expected after `:=`";                                 break;
+        // case BE_ERR_TRAP:                name = "Unconditional infinite loop";                                       break;
+        case BE_ERR_EMPTY_OUT:           name = "Expected an expression after `@ ... :`";                            break;
+        case BE_ERR_ALLOC_FAIL:          name = "Out of memory during compilation; malloc or calloc returned NULL";  break;
+        case BE_ERR_STACK_DEPTH:         name = "Nested scope depth exceeded";                                       break;
+        default:                         name = "Unknown error";                                                     goto end;
     }
     if(err->err && err->line_start) {
         if(err->line_start == err->line_end) sprintf(dst, "line %zu", err->line_start);
@@ -1283,9 +1283,8 @@ be_err_t be_line_parse(be_line_t *line, be_tline_t *tokens, b_vec_t *varnames, s
             line->type = BE_LT_OUT;
             for(k = 1; k < tokens->len; k ++) if(tokens->ptr[k].len == 1 && *tokens->ptr[k].name == ':') break;
             if(k == tokens->len - 1) {
-                err.line_start = tokens->ptr->text_line;
-                err.line_end = tokens->ptr[tokens->len - 1].text_line;
-                err.char_n = err.line_start == err.line_end ? tokens->ptr->text_char : 0;
+                err.line_end = err.line_start = tokens->ptr[k].text_line;
+                err.char_n = tokens->ptr[k].text_char;
                 err.err = BE_ERR_EMPTY_OUT;
                 goto ret;
             }
