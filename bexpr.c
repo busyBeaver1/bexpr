@@ -196,7 +196,7 @@ void be_strerr_to(char *dst, be_err_t *err) {
         case BE_ERR_ILL_CHAR:            name = "Unsupported character";                                             break;
         case BE_ERR_SCOPE_EXTRA_CLOSE:   name = "Closing `}` without a matching `{`";                                break;
         case BE_ERR_SCOPE_UNCLOSED:      name = "Unclosed `{`";                                                      break;
-        case BE_ERR_ILL_LAST_TOKEN:      name = "Unknown token at the end of the expression";                        break;
+        case BE_ERR_ILL_LAST_TOKEN:      name = "Unknown token at the end of an expression";                         break;
         case BE_ERR_ILL_TOKEN:           name = "Unknown token";                                                     break;
         case BE_ERR_CONSTANT_RANGE:      name = "Numeric constant out of range";                                     break;
         case BE_ERR_BRACKETS_MISMATCH:   name = "Brackets mismatch";                                                 break;
