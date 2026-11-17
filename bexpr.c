@@ -127,7 +127,7 @@ typedef double dtype;
 unsigned long long be_none_ull_() {
          if(sizeof(dtype) == 8) return BE_NONE_64_;
     else if(sizeof(dtype) == 4) return BE_NONE_32_;
-    else *(volatile int*)NULL = 42; // sizeof(double) should be either 4 or 8 and IEEE 754 compliant
+    else *(volatile int*)NULL = 67; // sizeof(double) should be either 4 or 8 and IEEE 754 compliant
 }
 dtype be_none() {
     dtype none;
@@ -1326,15 +1326,23 @@ be_err_t be_line_parse(be_line_t *line, be_tline_t *tokens, b_vec_t *varnames, s
     return err;
 }
 
+#define BE_MODE_EVAL            0 // normall call to be_code_eval
+#define BE_MODE_CONT            1 // continue execution after last call to be_code_eval returned none
+#if BE_USE_GCC_LABEL_POINTERS_
+#define BE_MODE_GNULABEL_FILLER 2 // filling in gcc labels-as-values pointers
+#endif
+
 typedef struct {
     b_vec_t ops; // vector of `be_op_t` raw operations
     b_vec_t lines; // lines of code
     be_var_t *vars; // array of variables, user-provided variables go to beginning of this array, rest is for holding values of variables defined in code of the program
     void (*print)(const char*, dtype); // function that gets called on `@` operations, if set to NULL it is not called
     size_t n_vars; // number of user-defined variables
-    // #if BE_USE_GCC_LABEL_POINTERS_
-    bool _be_gnulabel_filler_call;
-    // #endif
+
+    struct {
+        int eval_mode; // BE_MODE_*
+        be_op_t *next_op; // for continuing evaluation (eval_mode == BE_MODE_CONT)
+    } *_volatile;
 
     // structure for a compiled program
 } be_code_t;
@@ -1559,8 +1567,9 @@ void be_op_prep(b_vec_t *ops) {
 // `vars` is an array containing values for user-defined variables, same number as number of variables specified at compilation (`n_vars`)
 // `max_operations` is cap for how much raw operations may be performed (not to hang in case of infinite loop), 0 means no limit; when the limit is reached NAN is returned
 dtype be_code_eval(const be_code_t *code, const dtype *vars, unsigned long long max_operations) {
+    switch(code->_volatile->eval_mode) {
     #if BE_USE_GCC_LABEL_POINTERS_
-    if(code->_be_gnulabel_filler_call) {
+    case BE_MODE_GNULABEL_FILLER:
         for(size_t i = 0; i < code->ops.len; i ++) {
             be_op_t *rawop = b_vec_get((void*)&code->ops, i);
             BE_LABEL2PTR_()
@@ -1569,44 +1578,55 @@ dtype be_code_eval(const be_code_t *code, const dtype *vars, unsigned long long 
             #endif
         }
         return 0;
-    }
     #endif
-    for(size_t i = 0; i < code->n_vars; i ++) {
-        code->vars[i].a = vars[i];
-        code->vars[i].b = 0;
-    }
-    be_op_t *rawop = code->ops.ptr;
+    case BE_MODE_EVAL:
+        for(size_t i = 0; i < code->n_vars; i ++) {
+            code->vars[i].a = vars[i];
+            code->vars[i].b = 0;
+        }
+        be_op_t *rawop = code->ops.ptr;
+    if(0) { case BE_MODE_CONT: rawop = code->_volatile->next_op; }
     #if BE_USE_GCC_LABEL_POINTERS_
-    if(!BE_UNLIMITED_CASE_ || max_operations) {
-        unsigned long long k = 0;
-        goto *rawop->gnulabel;
-        BE_OP_CASES_(, L_,, if(max_operations && ++ k >= max_operations) return be_none(); rawop = rawop->next; goto *rawop->gnulabel)
-        L_BE_OP_RETURN: return *rawop->src1;
-        L_BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; if(max_operations && ++ k >= max_operations) return be_none(); goto *rawop->gnulabel;
-        L_BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); if(max_operations && ++ k >= max_operations) return be_none(); rawop = rawop->next; goto *rawop->gnulabel;
-    }
+        if(!BE_UNLIMITED_CASE_ || max_operations) {
+            unsigned long long k = 0;
+            goto *rawop->gnulabel;
+            BE_OP_CASES_(, L_,, rawop = rawop->next; if(max_operations && ++ k >= max_operations) goto ret; goto *rawop->gnulabel)
+            L_BE_OP_RETURN: return *rawop->src1;
+            L_BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; if(max_operations && ++ k >= max_operations) goto ret; goto *rawop->gnulabel;
+            L_BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); rawop = rawop->next; if(max_operations && ++ k >= max_operations) goto ret; goto *rawop->gnulabel;
+        }
     #if BE_UNLIMITED_CASE_
-    else {
-        goto *rawop->_gnulabel;
-        BE_OP_CASES_(, L__,, rawop = rawop->next; goto *rawop->_gnulabel)
-        L__BE_OP_RETURN: return *rawop->src1;
-        L__BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; goto *rawop->_gnulabel;
-        L__BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); rawop = rawop->next; goto *rawop->_gnulabel;
-    }
+        else {
+            goto *rawop->_gnulabel;
+            BE_OP_CASES_(, L__,, rawop = rawop->next; goto *rawop->_gnulabel)
+            L__BE_OP_RETURN: return *rawop->src1;
+            L__BE_OP_CONDJUMP: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; goto *rawop->_gnulabel;
+            L__BE_OP_OUT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); rawop = rawop->next; goto *rawop->_gnulabel;
+        }
     #endif
     #else
-    unsigned long long k;
-    for(k = 0; k < max_operations || max_operations == 0; k ++) {
-        switch(rawop->op) {
-            BE_OP_CASES_(case,, >> BE_RAWOP_SHIFT, break)
-            case BE_OP_RETURN   >> BE_RAWOP_SHIFT: return *rawop->src1;
-            case BE_OP_CONDJUMP >> BE_RAWOP_SHIFT: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; continue;
-            case BE_OP_OUT      >> BE_RAWOP_SHIFT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); break;
+        unsigned long long k;
+        for(k = 0; k < max_operations || max_operations == 0; k ++) {
+            switch(rawop->op) {
+                BE_OP_CASES_(case,, >> BE_RAWOP_SHIFT, break)
+                case BE_OP_RETURN   >> BE_RAWOP_SHIFT: return *rawop->src1;
+                case BE_OP_CONDJUMP >> BE_RAWOP_SHIFT: rawop = *rawop->src1 != 0 ? rawop->next : (void*)rawop->src2; continue;
+                case BE_OP_OUT      >> BE_RAWOP_SHIFT: if(code->print != NULL) code->print((char*)rawop->src2, *rawop->src1); break;
+            }
+            rawop = rawop->next;
         }
-        rawop = rawop->next;
-    }
     #endif
-    return be_none();
+        ret:
+        code->_volatile->next_op = rawop;
+        return be_none();
+    }
+}
+
+dtype be_code_eval_cont(const be_code_t *code, unsigned long long max_operations) {
+    code->_volatile->eval_mode = BE_MODE_CONT;
+    dtype r = be_code_eval(code, NULL, max_operations);
+    code->_volatile->eval_mode = BE_MODE_EVAL;
+    return r;
 }
 
 // checks whether a vector of `dtype*` contains a specific pointer as an element
@@ -1767,13 +1787,17 @@ be_err_t be_code_compile(be_code_t *code, const char *program, const char **varn
     b_vec_free(&_varnames);
     end1:
     b_vec_free(&tokens);
+    if(err.err) goto end0;
+    code->_volatile = malloc(sizeof(*code->_volatile));
+    if(code->_volatile == NULL) { err.err = BE_ERR_ALLOC_FAIL; err.line_start = 0; goto end0; }
     #if BE_USE_GCC_LABEL_POINTERS_
     if(err.err == 0) {
-        code->_be_gnulabel_filler_call = true;
+        code->_volatile->eval_mode = BE_MODE_GNULABEL_FILLER;
         be_code_eval(code, NULL, 0);
-        code->_be_gnulabel_filler_call = false;
     }
     #endif
+    code->_volatile->eval_mode = BE_MODE_EVAL;
+    end0:
     return err;
 }
 
@@ -1782,7 +1806,7 @@ void be_code_free(be_code_t *code) {
     for(int i = 0; i < code->lines.len; i ++) be_line_free(b_vec_get(&code->lines, i));
     b_vec_free(&code->lines);
     b_vec_free(&code->ops);
-    free(code->vars);
+    free(code->vars); free(code->_volatile);
 }
 
 #endif

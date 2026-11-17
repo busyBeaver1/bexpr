@@ -69,7 +69,13 @@ void be_code_free(be_code_t *code);
 // `vars` is an array containing values for user-defined variables, same number as number of variables specified at compilation (`n_vars`)
 // `max_operations` is cap for how much raw operations may be performed (not to hang in case of infinite loop), 0 means no limit;
 // when the limit is reached NaN with a special payload is returned, one can check it with be_isnone()
+// then one can call `be_code_eval_cont()` to continue execution
 double be_code_eval(const be_code_t *code, const double *vars, unsigned long long max_operations);
+
+// continue evaluating/running when the last call has run out of operations (see `max_operations`)
+// `max_operations` works the same way as in `be_code_eval()`
+// should only be called directly after a call to `be_code_eval()` or `be_code_eval_cont()` that has returned special NAN (see be_isnone)
+double be_code_eval_cont(const be_code_t *code, unsigned long long max_operations);
 
 // convert `be_err_t` to a humal-readible string (null-terminated)
 // up to BE_STRERR_MESSAGES_ messages are guarateed to safely coexist at a time (possibly more), then overwriting the oldest ones

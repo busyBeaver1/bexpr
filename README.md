@@ -24,7 +24,7 @@ You only need the `bexpr.c` file or `bexpr.h` additionally if you want to use a 
 - Create a bexpr program by defining an instance of `be_code_t` structure and calling `be_code_compile` on it;
 - Check the return value of `be_code_compile` for a compilation error (this includes out-of-memory error `BE_ERR_ALLOC_FAIL`). If an error occurred `be_strerr` or `be_strerr_to` can be invoked for a human-readable explanation and further steps shall not be executed (not even `be_code_free`);
 - Optionally set the `print` field of the program to a function to be invoked for printing out values during execution flow on `@` lines (if not set nothing will be done on a `@` line);
-- Use your program by invoking `be_code_eval` on it;
+- Use your program by invoking `be_code_eval` on it. If you provide non-zero `max_operations` you might get a special NaN (checked with `be_isnone`) in return indicating out-of-operations. Then you can but not have to use `be_code_eval_cont` one or multiple times until you get the actual result;
 - Deallocate all allocated fields of the program by calling `be_code_free`.
 
 Here is a basic example:
@@ -281,6 +281,8 @@ The example above also demonstrates const power optimization: instead of calling
 
 <a name="Performance"></a>
 ## Performance
+
+**Warning!** Benchmark data hasn't been updated after a few commits; The results now might be marginally worse now
 
 Here I mostly do a performance comparison with exprtk. I was initially inspired to create this project after trying out exprtk and seeing how just a basic compilation spans a several minecraft cpvp duels in time (and they're shipping it as single header wtf) producing ginormous file of several MB in size (specifically `exprtk_bridge.cpp` used in this benchmark compiles to 17.2 MB with `g++ -O3 -c exprtk_bridge.cpp -o exprtk_bridge.o` on my machine). Now `gcc -c -O3 -o bexpr.o bexpr.c` takes ~1.9 seconds and produces 80 KB, or ~0.23 seconds and 65 KB without `-O3`.
 

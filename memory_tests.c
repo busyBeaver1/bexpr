@@ -13,7 +13,7 @@ void stop_asan() {
     __sanitizer_set_report_fd((void*)(uintptr_t)fileno(f));
 }
 
-void crash() { stop_asan(); *(volatile int*)NULL = 1; }
+void crash() { stop_asan(); *(volatile int*)NULL = 67; }
 
 int alloc_fail_line;
 const char *alloc_fail_file;
